@@ -1,0 +1,10 @@
+#!/usr/bin/perl
+# 
+# Common functions for 'striker'.
+#
+
+use strict;
+use warnings;
+
+
+1;
