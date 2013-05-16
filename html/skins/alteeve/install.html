@@ -1,0 +1,125 @@
+<!-- 
+This is the template file used when running the installation of AN!Striker for
+the first time. 
+-->
+
+<!-- start welcome -->
+<!DOCTYPE html>
+<html lang="#!conf!sys::html_lang!#">
+	<head>
+		<title>#!string!install_0001!# - #!string!install_0002!#</title>
+		<!-- Common JS and CSS -->
+		<script type="text/javascript" src="#!conf!url::skins!#/#!conf!sys::skin!#/common.js"></script>
+		<link rel="stylesheet" type="text/css" media="all" href="#!conf!url::skins!#/#!conf!sys::skin!#/common.css" />
+		
+		<!-- Install-specific JS and CSS -->
+		<script type="text/javascript" src="#!conf!url::skins!#/#!conf!sys::skin!#/install.js"></script>
+		<link rel="stylesheet" type="text/css" media="all" href="#!conf!url::skins!#/#!conf!sys::skin!#/install.css" />
+		
+		<!-- JQuery -->
+		<script type="text/javascript" src="/jquery.js"></script>
+		
+		<!-- Bootstrap; http://twitter.github.io/bootstrap/getting-started.html -->
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<script type="text/javascript" src="/bootstrap/js/bootstrap.js"></script>
+		<link rel="stylesheet" type="text/css" media="all" href="/bootstrap/css/bootstrap.min.css" />
+		<link rel="stylesheet" type="text/css" media="all" href="/bootstrap/css/bootstrap-responsive.min.css" />
+	</head>
+	<body>
+		<div class="container" style="background-color: #f7f7f7;">
+			<h1>#!string!install_0001!#</h1>
+			<h4>#!string!install_0002!#</h4>
+			<div id='content' class='row-fluid'>
+				<form>
+					<div class='span10 main'>
+						<h5>#!string!install_0005!#</h5>
+						<h4>#!string!install_0006!#</h4>
+						<br />
+						#!string!install_0007!#<br /><br />
+						<div class='span2 main'>
+							#!string!install_0008!#:
+						</div>
+						<div class='span8 main'>
+							<input type="file" name="config_file" value=""> <input type="submit" name="null" value="#!string!generic_0004!#" class="button">
+						</div>
+						<div class='span2 main' style='text-align: center; font-weight: bold;'>
+							OR
+						</div>
+						<div class='span8 main'>
+							&nbsp;
+						</div>
+						<div class='span2 main'>
+							#!string!install_0004!#:
+						</div>
+						<div class='span8 main'>
+							<input type="text" name="system_name" value="#!conf!cgi::system_name!#" placeholder="#!string!html_0001!#">
+						</div>
+						#!replace!nic_form!#
+						<div class='span10 main'>
+							<button type="submit" class="button">#!string!generic_0011!#</button>
+						</div>
+						<div class='span10 main'>
+							&nbsp;
+						</div>
+					</div>
+				</form>
+				<div class='span2 sidebar'>
+					<h2>#!string!generic_0003!#</h2>
+					<ul class="nav nav-tabs nav-stacked">
+						<li><a href='#!string!url_0006!#'>#!string!url_0005!#</a></li>
+						<li><a href='#!string!url_0008!#'>#!string!url_0007!#</a></li>
+						<li><a href='#!string!url_0002!#'>#!string!url_0001!#</a></li>
+						<li><a href='#!string!url_0004!#'>#!string!url_0003!#</a></li>
+					</ul>
+				</div>
+			</div>
+		</div>
+	</body>
+
+</html>
+<!-- end welcome -->
+
+<!-- start nic_form -->
+						<div class='span2 main'>
+							#!string!install_0011!# #!replace!interface_number!#:
+						</div>
+						<div class='span8 main'>
+							#!replace!vendor!#, #!replace!mac_string!#
+						</div>
+						<div class='span2 main'>
+							&nbsp;
+						</div>
+						<div class='span8 main'>
+							#!replace!state!#
+						</div>
+						<div class='span2 main'>
+							#!string!install_0009!#:
+						</div>
+						<div class='span8 main'>
+							<input type="text" name="#!replace!ip_variable!#" value="#!replace!ip_value!#" placeholder="#!string!html_0002!#">
+						</div>
+						<div class='span2 main'>
+							#!string!install_0010!#:
+						</div>
+						<div class='span8 main'>
+							<input type="text" name="#!replace!subnet_variable!#" value="#!replace!subnet_value!#" placeholder="#!string!html_0003!#">
+						</div>
+						<div class='span2 main'>
+							#!string!install_0015!#:
+						</div>
+						<div class='span8 main'>
+							<input type="text" name="#!replace!gateway_variable!#" value="#!replace!gateway_value!#" placeholder="#!string!html_0004!#"> <input type="radio" name="defroute" value="#!replace!interface!#" #!replace!dg_selected!#> #!string!install_0018!#
+						</div>
+						<div class='span2 main'>
+							#!string!install_0016!#:
+						</div>
+						<div class='span8 main'>
+							<input type="text" name="#!replace!dns1_variable!#" value="#!replace!dns1_value!#" placeholder="#!string!html_0005!#">
+						</div>
+						<div class='span2 main'>
+							#!string!install_0017!#:
+						</div>
+						<div class='span8 main'>
+							<input type="text" name="#!replace!dns2_variable!#" value="#!replace!dns2_value!#" placeholder="#!string!html_0006!#">
+						</div>
+<!-- end nic_form -->

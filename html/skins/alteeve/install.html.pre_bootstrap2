@@ -1,0 +1,40 @@
+<!-- 
+This is the template file used when running the installation of AN!Striker for
+the first time. 
+-->
+
+<!-- start welcome -->
+<!DOCTYPE html>
+<html lang="#!conf!sys::html_lang!#">
+	<head>
+		<!-- All translatable strings are found in the 'strings.xml' file in the root of the CGI directory -->
+		<title>#!string!install_0001!#</title>
+		
+		<!-- AN! Stuff -->
+		<link rel="shortcut icon" href="#!conf!url::skins!##!conf!sys::skin!#/favicon.ico" />
+		<meta name="description" content="">
+		<meta name="author" content="">
+		
+		<!-- JQuery -->
+		<script type="text/javascript" src="/jquery.js"></script>
+		
+		<!-- Bootstrap; http://twitter.github.io/bootstrap/getting-started.html -->
+		<!--
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<script type="text/javascript" src="/bootstrap/js/bootstrap.js"></script>
+		<link rel="stylesheet" type="text/css" media="all" href="/bootstrap/css/bootstrap-responsive.css" />
+		-->
+	</head>
+	<body>
+		<div id="install_form">
+			#!string!install_0001!# - #!string!install_0002!#
+			<fieldset>
+				#!replace!language_select!# <br />
+				<label for="company_name" id="name_label">#!string!install_0003!#</label>  
+				<input type="text" class="text-input" name="company_name" placeholder="#!string!install_0004!#"> <!-- Company Name -->
+				<label class="error" for="name" id="name_error">#!string!form_0001!#</label>  
+			</fieldset>
+		</div> <!-- /install_form -->
+	</body>
+</html>
+<!-- end welcome -->

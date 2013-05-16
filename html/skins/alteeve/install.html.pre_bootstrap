@@ -1,0 +1,43 @@
+<!-- 
+This is the template file used when running the installation of AN!Striker for
+the first time. 
+-->
+
+<!-- start welcome -->
+<!DOCTYPE html>
+<html lang="#!conf!sys::html_lang!#">
+	<head>
+		<!-- All translatable strings are found in the 'strings.xml' file in the root of the CGI directory -->
+		<title>#!string!install_0001!#</title>
+		
+		<!-- AN! Stuff -->
+		<link rel="shortcut icon" href="#!conf!url::skins!##!conf!sys::skin!#/favicon.ico" />
+		<link rel="stylesheet" type="text/css" media="all" href="#!conf!url::skins!##!conf!sys::skin!#/common.css" />
+		<link rel="stylesheet" type="text/css" media="all" href="#!conf!url::skins!##!conf!sys::skin!#/install.css" />
+		<script type="text/javascript" src="#!conf!url::skins!##!conf!sys::skin!#/common.js"></script>          
+		<script type="text/javascript" src="#!conf!url::skins!##!conf!sys::skin!#/install.js"></script>
+		<meta name="description" content="">
+		<meta name="author" content="">
+		
+		<!-- JQuery -->
+		<script type="text/javascript" src="/jquery.js"></script>
+		
+		<!-- Bootstrap; http://twitter.github.io/bootstrap/getting-started.html -->
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<script type="text/javascript" src="/bootstrap/js/bootstrap.min.js"></script>
+		<link rel="stylesheet" type="text/css" media="all" href="/bootstrap/css/bootstrap-responsive.css" />
+		<!--
+		<script type="text/javascript" src="/bootstrap/js/bootstrap.js"></script>
+		<link rel="stylesheet" type="text/css" media="all" href="/bootstrap/css/bootstrap.css" />
+		<link rel="stylesheet" type="text/css" media="all" href="/bootstrap/css/bootstrap.min.css" />
+		-->
+	</head>
+
+	<body>
+		<div class="row">
+			<div class="span4">#!string!install_0001!#</div>
+			<div class="span3 offset2">#!string!install_0002!#</div>
+		</div> <!-- /row -->
+	</body>
+</html>
+<!-- end welcome -->
