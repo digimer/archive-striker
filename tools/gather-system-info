@@ -1,0 +1,317 @@
+#!/usr/bin/perl
+# 
+# This reads information about the system... Host name, IPs, etc. It records
+# it's findings in a CSV text file that the caller reads when this exits.
+#
+
+use strict;
+use warnings;
+use IO::Handle;
+
+my $conf = {
+	data	=>	{
+		hostname	=>	"--",
+	},
+	paths	=>	{
+		ethtool		=>	"/sbin/ethtool",
+		hostname	=>	"/etc/sysconfig/network",
+		ifconfig	=>	"/sbin/ifconfig",
+		interfaces	=>	"/etc/sysconfig/network-scripts/",
+	},
+};
+
+# Read the host name
+read_hostname($conf);
+
+# Now read the interface config files.
+read_interfaces($conf);
+
+# Next, read the 'ifconfig -a' output. This over-writes what was read in the
+# config files.
+read_ifconfig($conf);
+
+# We'll read 'ethtool' to gather speed data from the interfaces.
+read_ethtool($conf);
+
+# Here's what I found.
+report_interfaces($conf);
+
+exit(0);
+
+# This calls 'ethtool' for each interface and records details about the 
+# interfaces like speed, duplex, etc.
+sub read_ethtool
+{
+	my ($conf) = @_;
+	
+	foreach my $interface (sort {$a cmp $b} keys %{$conf->{interface}})
+	{
+		next if $interface eq "lo";
+		my $in_slm      = 0;
+		my $max_speed   = "?";
+		my $speed       = "?";
+		my $duplex      = "?";
+		my $link_up     = "?";
+		my $shell_call  = "$conf->{paths}{ethtool} $interface";
+		my $file_handle = IO::Handle->new();
+		open($file_handle, "$shell_call 2>&1 |") or die "ERROR: Failed to call: [$shell_call], error: $!\n";
+		while (<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$line =~ s/^\s+//;
+			$line =~ s/\s+$//;
+			#print __LINE__."; $interface: line: [$line]\n";
+			if ($line =~ /Supported link modes:\s+(.*)/)
+			{
+				$max_speed = $1;
+				$in_slm    = 1;
+			}
+			elsif ($in_slm)
+			{
+				if ($line =~ /^(\d+.*)/)
+				{
+					$max_speed = $1;
+				}
+				else
+				{
+					$in_slm = 0;
+				}
+			}
+			if ($line =~ /Speed: (.*)/)
+			{
+				$speed = $1;
+				$speed =~ s/Mb\/s/Mbps/;
+				$speed =~ s/(\d)(\D)/$1 $2/;
+			}
+			if ($line =~ /Duplex: (.*)/)
+			{
+				$duplex = $1;
+			}
+			if ($line =~ /Link detected: (.*)/)
+			{
+				$link_up = $1;
+				$link_up = $link_up eq "yes" ? 1 : 0;
+			}
+		}
+		$file_handle->close();
+		
+		# I need to split off the duplex value and convert the 'BaseT'
+		# to 'Mbps' for consistency's sake.
+		   $max_speed  =~ s/^.*?\s(\d+.*)/$1/;
+		my $max_duplex =  $max_speed;
+		   $max_speed  =~ s/\/.*$//;
+		   $max_duplex =~ s/^.*\///;
+		   $max_speed  =~ s/baseT/ Mbps/;
+		   $duplex     =  lc($duplex)     eq "full" ? 1 : 0;
+		   $max_duplex =  lc($max_duplex) eq "full" ? 1 : 0;
+		$conf->{interface}{$interface}{max_speed}  = $max_speed;
+		$conf->{interface}{$interface}{max_duplex} = $max_duplex;
+		$conf->{interface}{$interface}{speed}      = $speed;
+		$conf->{interface}{$interface}{duplex}     = $duplex;
+		$conf->{interface}{$interface}{link_up}    = $link_up;
+	}
+	
+	return(0);
+}
+
+# This reads the hostname file.
+sub read_hostname
+{
+	my ($conf) = @_;
+	
+	my $shell_call  = "$conf->{paths}{hostname}";
+	my $file_handle = IO::Handle->new();
+	open($file_handle, "<$shell_call") or die "ERROR: Failed to read: [$shell_call], error: $!\n";
+	while (<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		if ($line =~ /HOSTNAME=(.*)$/)
+		{
+			my $hostname = $1;
+			print "hostname,$hostname\n";
+			$conf->{data}{hostname} = $hostname;
+		}
+	}
+	
+	return;
+}
+
+# This calls 'ifconfig -a' to determine what NICs are available.
+sub read_ifconfig
+{
+	my ($conf) = @_;
+	
+	my $interface   = "";
+	my $shell_call  = "$conf->{paths}{ifconfig} -a";
+	my $file_handle = IO::Handle->new();
+	open($file_handle, "$shell_call 2>&1 |") or die "ERROR: Failed to call: [$shell_call], error: $!\n";
+	while (<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		if (not $line)
+		{
+			$interface = "";
+			next;
+		}
+		elsif ($line =~ /^(\S+)\s/)
+		{
+			$interface = $1;
+			$line =~ s/^$interface\s+//;
+			
+			if (not exists $conf->{interface}{$interface})
+			{
+				$conf->{interface}{$interface}{mac}       = "?";
+				$conf->{interface}{$interface}{ip}        = "?";
+				$conf->{interface}{$interface}{subnet}    = "?";
+				$conf->{interface}{$interface}{gateway}   = "?";
+				$conf->{interface}{$interface}{dns1}      = "?";
+				$conf->{interface}{$interface}{dns2}      = "?";
+				$conf->{interface}{$interface}{defroute}  = "?";
+				$conf->{interface}{$interface}{bootproto} = "?";
+				$conf->{interface}{$interface}{mtu}       = "?";
+			}
+			$conf->{interface}{$interface}{seen_in_ifconfig} = 1;
+		}
+		$line =~ s/^\s+//;
+		
+		if ($interface)
+		{
+			next if $interface eq "lo";
+			if ($line =~ /HWaddr\s+(\w\w:\w\w:\w\w:\w\w:\w\w:\w\w)/)
+			{
+				my $mac = $1;
+				#print "interface: [$interface], MAC: [$mac]\n";
+				$conf->{interface}{$interface}{mac} = $mac;
+			}
+			if ($line =~ /inet\s+addr:(\d+\.\d+\.\d+\.\d+)\s+Bcast:.*\s+Mask:(\d+\.\d+\.\d+\.\d+)/)
+			{
+				my $ip     = $1;
+				my $subnet = $2;
+				#print "interface: [$interface], IP: [$ip], subnet: [$subnet]\n";
+				$conf->{interface}{$interface}{ip}     = $ip;
+				$conf->{interface}{$interface}{subnet} = $subnet;
+			}
+			if ($line =~ /MTU:(\d+)/)
+			{
+				my $mtu = $1;
+				$conf->{interface}{$interface}{mtu} = $mtu;
+			}
+		}
+	}
+	
+	return(0);
+}
+
+# This prints out the CSV formatted interface info.
+sub report_interfaces
+{
+	my ($conf) = @_;
+	
+	foreach my $interface (sort {$a cmp $b} keys %{$conf->{interface}})
+	{
+		next if $interface eq "lo";
+		foreach my $key (sort {$a cmp $b} keys %{$conf->{interface}{$interface}})
+		{
+			print "interface,$interface,$key,$conf->{interface}{$interface}{$key}\n";
+		}
+	}
+}
+
+# This looks for 'ifcfg-ethX' files and dumps out the contents in a parsable manner
+sub read_interfaces
+{
+	my ($conf) = @_;
+	
+	my $interface = "";
+	my $directory = "$conf->{paths}{interfaces}";
+	opendir(DIR, $directory) or die "ERROR: Failed to open the directory: [$directory], error: $!\n";
+	while (my $file = readdir(DIR))
+	{
+		next if $file eq "ifcfg-lo";
+		if ($file =~ /^ifcfg-(.*)$/)
+		{
+			$interface = $1;
+			#print "Parsing interface: [$interface] config file: [$file]\n";
+			$conf->{interface}{$interface}{mac}              = "" if not $conf->{interface}{$interface}{mac};
+			$conf->{interface}{$interface}{ip}               = "" if not $conf->{interface}{$interface}{ip};
+			$conf->{interface}{$interface}{subnet}           = "" if not $conf->{interface}{$interface}{subnet};
+			$conf->{interface}{$interface}{gateway}          = "" if not $conf->{interface}{$interface}{gateway};
+			$conf->{interface}{$interface}{dns1}             = "" if not $conf->{interface}{$interface}{dns1};
+			$conf->{interface}{$interface}{dns2}             = "" if not $conf->{interface}{$interface}{dns2};
+			$conf->{interface}{$interface}{defroute}         = "" if not $conf->{interface}{$interface}{defroute};
+			$conf->{interface}{$interface}{bootproto}        = "" if not $conf->{interface}{$interface}{bootproto};
+			$conf->{interface}{$interface}{seen_in_ifconfig} = 0  if not $conf->{interface}{$interface}{seen_in_ifconfig};
+			
+			my $shell_call  = "$conf->{paths}{interfaces}$file";
+			my $file_handle = IO::Handle->new();
+			open($file_handle, "<$shell_call") or die "ERROR: Failed to read: [$shell_call], error: $!\n";
+			while (<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				if ($line =~ /HWADDR=(.*)$/)
+				{
+					my $mac = $1;
+					   $mac =~ s/^"(.*?)"$/$1/;
+					#print "interface,$interface,mac,$mac\n";
+					$conf->{interface}{$interface}{mac} = $mac;
+				}
+				elsif ($line =~ /IPADDR=(.*)$/)
+				{
+					my $ip = $1;
+					   $ip =~ s/^"(.*?)"$/$1/;
+					#print "interface,$interface,ip,$ip\n";
+					$conf->{interface}{$interface}{ip} = $ip;
+				}
+				elsif ($line =~ /NETMASK=(.*)$/)
+				{
+					my $subnet = $1;
+					   $subnet =~ s/^"(.*?)"$/$1/;
+					#print "interface,$interface,subnet,$subnet\n";
+					$conf->{interface}{$interface}{subnet} = $subnet;
+				}
+				elsif ($line =~ /GATEWAY=(.*)$/)
+				{
+					my $gateway = $1;
+					   $gateway =~ s/^"(.*?)"$/$1/;
+					#print "interface,$interface,gateway,$gateway\n";
+					$conf->{interface}{$interface}{gateway} = $gateway;
+				}
+				elsif ($line =~ /DNS1=(.*)$/)
+				{
+					my $dns1 = $1;
+					   $dns1 =~ s/^"(.*?)"$/$1/;
+					#print "interface,$interface,dns1,$dns1\n";
+					$conf->{interface}{$interface}{dns1} = $dns1;
+				}
+				elsif ($line =~ /DNS2=(.*)$/)
+				{
+					my $dns2 = $1;
+					   $dns2 =~ s/^"(.*?)"$/$1/;
+					#print "interface,$interface,dns2,$dns2\n";
+					$conf->{interface}{$interface}{dns2} = $dns2;
+				}
+				elsif ($line =~ /DEFROUTE=(.*)$/)
+				{
+					my $defroute =  $1;
+					   $defroute =~ s/^"(.*?)"$/$1/;
+					#print "interface,$interface,defroute,$defroute\n";
+					$conf->{interface}{$interface}{defroute} = $defroute;
+				}
+				elsif ($line =~ /BOOTPROTO=(.*)$/)
+				{
+					my $bootproto =  $1;
+					   $bootproto =~ s/^"(.*?)"$/$1/;
+					#print "interface,$interface,bootproto,$bootproto\n";
+					$conf->{interface}{$interface}{bootproto} = $bootproto;
+				}
+			}
+			
+		}
+	}
+	
+	return(0);
+}
