@@ -6,5 +6,1161 @@
 use strict;
 use warnings;
 
+# Set static variables.
+my $THIS_FILE = "common.lib";
+
+
+# This builds an HTML '<select ...>...</select>' drop-down list.
+sub build_html_select
+{
+	my ($conf, $variables) = @_;
+	
+	# Convert the hash variables to string variables.
+	my $select_name     = $variables->{select_name}     ? $variables->{select_name}     : "";
+	my $select_id       = $variables->{select_id}       ? $variables->{select_id}       : "";
+	my $selected_option = $variables->{selected_option} ? $variables->{selected_option} : "";
+	my $blank_option    = $variables->{blank_option}    ? $variables->{blank_option}    : 0;
+	my $options         = $variables->{options}         ? $variables->{options}         : [];
+	my $attributes      = $variables->{attributes}      ? $variables->{attributes}      : "";
+	
+	# Start building the <select ...>
+	my $select = "<select name=\"$select_name\" id=\"$select_id\">\n";
+	
+	# Add attributes, if any.
+	if ($attributes)
+	{
+		$select =~ s/>/ $attributes>/;
+	}
+	
+	# Insert a blank option, if requested.
+	if ($blank_option)
+	{
+		$select .= "<option></option>\n";
+	}
+	
+	# Add the options
+	foreach my $option (@{$options})
+	{
+		my ($option_value, $option_name) = split /,/, $option, 2;
+		$select .= "<option name=\"$option_value\">$option_name</option>\n";
+	}
+	
+	# Select the appropriate option, if any.
+	if ($selected_option)
+	{
+		$select =~ s/value="$selected_option">/value="$selected_option" selected>/;
+	}
+	
+	return($select);
+}
+
+# This calls 'gather-system-info' and parses the returned CSV.
+sub call_gather_system_info
+{
+	my ($conf) = @_;
+	
+	my $shell_call  = $conf->{setuid}{'call_gather-system-info'};
+	my $file_handle = IO::Handle->new();
+	open ($file_handle, "$shell_call 2>&1 |") or hard_die($conf, $THIS_FILE, __LINE__, 14, "Failed to call the setuid root C-wrapper: [$shell_call]. The error was: $!\n");
+	binmode $file_handle, ":utf8:";
+	while (<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		if ($line =~ /hostname,(.*)/)
+		{
+			$conf->{sys}{hostname} = $1;
+		}
+		elsif ($line =~ /interface,(.*?),(.*?),(.*)/)
+		{
+			my $interface = $1;
+			my $key       = $2;
+			my $value     = $3;
+			$conf->{interface}{$interface}{$key} = $value;
+		}
+	}
+	$file_handle->close();
+	
+	return(0);
+}
+
+# The reads in any passed CGI variables
+sub get_cgi_vars
+{
+	my ($conf, $vars) = @_;
+	
+	# Needed to read in passed CGI variables
+	my $cgi = new CGI;
+	
+	# This will store the string I was passed.
+	$conf->{sys}{cgi_string} = "?";
+	foreach my $var (@{$vars})
+	{
+		# A stray comma will cause a loop with no var name
+		next if not $var;
+		
+		# I auto-select the 'cluster' variable if only one is checked.
+		# Because of this, I don't want to overwrite the empty CGI 
+		# value. This prevents that.
+		if (($var eq "cluster") && ($conf->{cgi}{cluster}))
+		{
+			$conf->{sys}{cgi_string} .= "$var=$conf->{cgi}{$var}&";
+			next;
+		}
+		
+		# Avoid "uninitialized" warning messages by putting an empty
+		# string into undefined (unpassed) CGI variables.
+		$conf->{cgi}{$var} = "";
+		if (defined $cgi->param($var))
+		{
+			# If I am being passed a file that a client is trying
+			# to upload, record it separately.
+			if ($var eq "file")
+			{
+				$conf->{cgi_fh}{$var} = $cgi->upload($var);
+				print "$THIS_FILE ".__LINE__."; cgi FH: [$var] -> [$conf->{cgi_fh}{$var}]\n";
+			}
+			$conf->{cgi}{$var} = $cgi->param($var);
+			
+			# Make this UTF8 if it isn't already.
+			if (not Encode::is_utf8( $conf->{cgi}{$var} ))
+			{
+				$conf->{cgi}{$var} = Encode::decode_utf8( $conf->{cgi}{$var} );
+			}
+			$conf->{sys}{cgi_string} .= "$var=$conf->{cgi}{$var}&";
+		}
+		#print "$THIS_FILE ".__LINE__."; var: [$var] -> [$conf->{cgi}{$var}]\n" if $conf->{cgi}{$var};
+	}
+	$conf->{sys}{cgi_string} =~ s/&$//;
+	#print "$THIS_FILE ".__LINE__."; system::cgi_string: [$conf->{sys}{cgi_string}]\n";
+	
+	return (0);
+}
+
+# This pulls out all of the configured languages from the 'strings.xml' file
+# and returns them as an array reference with comma-separated "key,name" 
+# values.
+sub get_languages
+{
+	my ($conf) = @_;
+	my $language_options = [];
+	
+	foreach my $key (sort {$a cmp $b} keys %{$conf->{string}{lang}})
+	{
+		my $name = $conf->{string}{lang}{$key}{lang}{long_name};
+		push @{$language_options}, "$key,$name";
+	}
+	
+	return($language_options);
+}
+
+# This takes a string key and returns the string for the currently active
+# language.
+sub get_string
+{
+	my ($conf, $parameters) = @_;
+	
+	my $key       = $parameters->{key};
+	my $language  = $parameters->{language}  ? $parameters->{language}  : $conf->{sys}{language};
+	my $variables = $parameters->{variables} ? $parameters->{variables} : "";
+	
+	if (not $key)
+	{
+		hard_die($conf, $THIS_FILE, __LINE__, 2, "No string key was passed into common.lib's 'get_string()' function.\n");
+	}
+	if (not $language)
+	{
+		hard_die($conf, $THIS_FILE, __LINE__, 3, "No language key was set when trying to build a string in common.lib's 'get_string()' function.\n");
+	}
+	elsif (not exists $conf->{string}{lang}{$language})
+	{
+		hard_die($conf, $THIS_FILE, __LINE__, 4, "The language key: [$language] does not exist in the 'strings.xml' file.\n");
+	}
+	if (($variables) && (ref($variables) ne "HASH"))
+	{
+		hard_die($conf, $THIS_FILE, __LINE__, 5, "The 'variables' string passed into common.lib's 'get_string()' function is not a hash reference. The string's data is: [$variables].\n");
+	}
+	
+	if (not exists $conf->{string}{lang}{$language}{key}{$key}{content})
+	{
+		hard_die($conf, $THIS_FILE, __LINE__, 6, "The 'string' generated by common.lib's 'get_string()' function is undefined. This passed string key: [$key] may not exist in the 'strings.xml' file.\n");
+	}
+	
+	# Grab the string and start cleaning it up.
+	my $string = $conf->{string}{lang}{$language}{key}{$key}{content};
+	
+	# This clears off the new-line and trailing white-spaces caused by the
+	# indenting of the '</key>' field in the words XML file when printing
+	# to the command line.
+	$string =~ s/^\n//;
+	$string =~ s/\n(\s+)$//;
+	
+	# Process all the #!...!# escape variables.
+	($string) = process_string($conf, $string, $variables);
+	
+	#print "$THIS_FILE ".__LINE__."; key: [$key], language: [$language]\n";
+	return($string);
+}
+
+# This funtion does not try to parse anything, use templates or what have you.
+# It's very close to a simple 'die'. This should be used as rarely as possible
+# as translations can't be used.
+sub hard_die
+{
+	my ($conf, $file, $line, $exit_code, $message) = @_;
+	
+	$file      = "--" if not defined $file;
+	$line      = 0    if not defined $line;
+	$exit_code = 999  if not defined $exit_code;
+	$message   = "?"  if not defined $message;
+	
+	print "<div name=\"hard_die\">\n";
+	print "Fatal error: [<span class=\"code\">$exit_code</span>] in file: [<span class=\"code\">$file</span>] at line: [<span class=\"code\">$line</span>]!<br />\n";
+	print "$message<br />\n";
+	print "Exiting.<br />\n";
+	print "</div>\n";
+	
+	exit ($exit_code);
+}
+
+# This is run when the host system has not been configured. When done, it will
+# create the configuration file. The existance of that file prevents this from
+# running again.
+sub initial_configuration
+{
+	my ($conf) = @_;
+	
+	# Build the language select input.
+	my $language_options = get_languages($conf);
+	my $select_language = build_html_select($conf, {
+		select_name	=>	"language",
+		select_id	=>	"language",
+		selected_option	=>	$conf->{cgi}{language},
+		blank_option	=>	0,
+		options		=>	$language_options,
+		attributes	=>	"onselect='null()'",
+	});
+	
+	# Read any install-specific CGI variables.
+	get_cgi_vars($conf, [
+		"config_name",
+		"language",
+		"system_name",
+		"interfaces",
+		"defroute",
+	]);
+	
+	# Call the 'gather-system-info' tool
+	call_gather_system_info($conf);
+	
+	# Now set the CGI variables to the read system values if the CGI
+	# variables are empty.
+	$conf->{cgi}{interfaces} = "";
+	my $nic_replace          = "";
+	my $i                    = 1;
+	foreach my $interface (sort {$a cmp $b} keys %{$conf->{interface}})
+	{
+		$conf->{cgi}{interfaces} .= "$interface,";
+		my $ip_key        = "${interface}_ip";
+		my $subnet_key    = "${interface}_subnet";
+		my $gateway_key   = "${interface}_gateway";
+		my $dns1_key      = "${interface}_dns1";
+		my $dns2_key      = "${interface}_dns2";
+		my $defroute_key  = "${interface}_defroute";
+		my $bootproto_key = "${interface}_bootproto";
+		
+		# These are just displayed, not set via CGI
+		my $link_up_key    = "${interface}_link_up";
+		my $duplex_key     = "${interface}_duplex";
+		my $mac_key        = "${interface}_mac";
+		my $speed_key      = "${interface}_speed";
+		my $max_speed_key  = "${interface}_max_speed";
+		my $max_duplex_key = "${interface}_max_duplex";
+		my $vendor_key     = "${interface}_vendor";
+		
+		# Read in the CGI variables.
+		get_cgi_vars($conf, [
+			"$ip_key",
+			"$subnet_key",
+			"$gateway_key",
+			"$dns1_key",
+			"$dns2_key",
+			"$defroute_key",
+			"$bootproto_key",
+		]);
+		$conf->{cgi}{$ip_key}        = $conf->{interface}{$interface}{ip}        if not $conf->{cgi}{$ip_key};
+		$conf->{cgi}{$subnet_key}    = $conf->{interface}{$interface}{subnet}    if not $conf->{cgi}{$subnet_key};
+		$conf->{cgi}{$gateway_key}   = $conf->{interface}{$interface}{gateway}   if not $conf->{cgi}{$gateway_key};
+		$conf->{cgi}{$dns1_key}      = $conf->{interface}{$interface}{dns1}      if not $conf->{cgi}{$dns1_key};
+		$conf->{cgi}{$dns2_key}      = $conf->{interface}{$interface}{dns2}      if not $conf->{cgi}{$dns2_key};
+		$conf->{cgi}{$defroute_key}  = $conf->{interface}{$interface}{defroute}  if not $conf->{cgi}{$defroute_key};
+		$conf->{cgi}{$bootproto_key} = $conf->{interface}{$interface}{bootproto} if not $conf->{cgi}{$bootproto_key};
+		
+		# Always set by what was read. Using 'cgi' for convenience's
+		# sake.
+		$conf->{cgi}{$link_up_key}    = $conf->{interface}{$interface}{link_up};
+		$conf->{cgi}{$duplex_key}     = $conf->{interface}{$interface}{duplex};
+		$conf->{cgi}{$mac_key}        = $conf->{interface}{$interface}{mac};
+		$conf->{cgi}{$speed_key}      = $conf->{interface}{$interface}{speed};
+		$conf->{cgi}{$max_speed_key}  = $conf->{interface}{$interface}{max_speed};
+		$conf->{cgi}{$max_duplex_key} = $conf->{interface}{$interface}{max_duplex};
+		$conf->{cgi}{$vendor_key}     = "?";
+		#print "Link: [$conf->{interface}{$interface}{link_up}], duplex: [$conf->{interface}{$interface}{duplex}], mac: [$conf->{interface}{$interface}{mac}], speed: [$conf->{interface}{$interface}{speed}], max_speed: [$conf->{interface}{$interface}{max_speed}]<br />\n";
+		
+		# If I have a MAC address, get the vendor.
+		if ($conf->{cgi}{$mac_key})
+		{
+			$conf->{cgi}{$vendor_key} = translate_mac_to_vendor($conf, $conf->{cgi}{$mac_key});
+		}
+		
+		# Build the form entry for this interface
+		my $say_state      = "";
+		my $say_duplex     = "";
+		my $say_max_duplex = "";
+		my $say_speed      = "";
+		my $say_max_speed  = "";
+		if ($conf->{cgi}{$duplex_key} eq "?")
+		{
+			$say_duplex = get_string($conf, {key => "generic_0010", variables => {}});
+		}
+		else
+		{
+			$say_duplex = $conf->{cgi}{$duplex_key} ? "#!string!generic_0008!#" : "#!string!generic_0009!#"; # 8 == full, 9 == half
+		}
+		if ($conf->{cgi}{$max_duplex_key} eq "?")
+		{
+			$say_max_duplex = get_string($conf, {key => "generic_0010", variables => {}});
+		}
+		else
+		{
+			$say_max_duplex = $conf->{cgi}{$max_duplex_key} ? "#!string!generic_0008!#" : "#!string!generic_0009!#"; # 8 == full, 9 == half
+		}
+		if ($conf->{cgi}{$speed_key} eq "?")
+		{
+			$say_speed = get_string($conf, {key => "generic_0010", variables => {}});
+		}
+		else
+		{
+			$say_speed = $conf->{cgi}{$speed_key};
+		}
+		if ($conf->{cgi}{$max_speed_key} eq "?")
+		{
+			$say_max_speed = get_string($conf, {key => "generic_0010", variables => {}});
+		}
+		else
+		{
+			$say_max_speed = $conf->{cgi}{$max_speed_key};
+		}
+		if ($conf->{cgi}{$link_up_key})
+		{
+			# Link is up
+			$say_state = get_string($conf, {key => 'install_0012', variables => {
+				link_status		=>	"#!string!generic_0006!#",
+				link_speed		=>	$say_speed,
+				link_duplex		=>	$say_duplex,
+				link_max_speed		=>	$say_max_speed,
+				link_max_duplex		=>	$say_max_duplex,
+			}});
+		}
+		else
+		{
+			# Link is down
+			$say_state = get_string($conf, {key => 'install_0013', variables => {
+				link_status		=>	"#!string!generic_0006!#",
+				link_speed		=>	$say_speed,
+				link_duplex		=>	$say_duplex,
+				link_max_speed		=>	$say_max_speed,
+				link_max_duplex		=>	$say_max_duplex,
+			}});
+		}
+		my $dg_selected = "";
+		if (($conf->{cgi}{defroute}) && ($conf->{cgi}{defroute} eq $interface))
+		{
+			$dg_selected = "checked";
+		}
+		elsif ((not $conf->{cgi}{defroute}) && ($i == 1))
+		{
+			$dg_selected = "checked";
+		}
+		my $say_mac_string = get_string($conf, {key => 'install_0014', variables => {mac_address => $conf->{cgi}{$mac_key}}});
+		my $variables = {};
+		my $replace   = {
+			interface_number	=>	$i,
+			interface		=>	$interface,
+			dg_selected		=>	$dg_selected,
+			'state'			=>	$say_state,
+			mac_string		=>	$say_mac_string,
+			vendor			=>	$conf->{cgi}{$vendor_key},
+			ip_variable		=>	"$ip_key",
+			ip_value		=>	$conf->{cgi}{$ip_key},
+			subnet_variable		=>	"$subnet_key",
+			subnet_value		=>	$conf->{cgi}{$subnet_key},
+			gateway_variable	=>	"$gateway_key",
+			gateway_value		=>	$conf->{cgi}{$gateway_key},
+			dns1_variable		=>	"$dns1_key",
+			dns1_value		=>	$conf->{cgi}{$dns1_key},
+			dns2_variable		=>	"$dns2_key",
+			dns2_value		=>	$conf->{cgi}{$dns2_key},
+		};
+		$nic_replace .= template($conf, "install", "nic_form", $variables, $replace);
+		$i++;
+	}
+	$conf->{cgi}{interfaces} =~ s/,$//;
+	
+	my $variables = {};
+	my $replace   = {
+		language_select	=>	$select_language,
+		nic_form	=>	$nic_replace,
+	};
+	print template($conf, "install", "welcome", $variables, $replace);
+	
+	exit(0);
+}
+
+# This initializes a call; reads variables, etc.
+sub initialize
+{
+	# Set default configuration variable values
+	my ($conf) = initialize_conf();
+	
+	# First thing first, initialize the web session.
+	initialize_http($conf);
+	
+	# First up, read in the default strings file.
+	read_strings($conf);
+	
+	# Read in the configuration file. If the file doesn't exist, initial 
+	# setup will be triggered.
+	read_configuration_file($conf);
+	
+	return($conf);
+}
+
+# Set default configuration variable values
+sub initialize_conf
+{
+	my $conf = {
+		path				=>	{
+			config_file			=>	"./striker.conf",
+			languages			=>	"./strings.xml",
+			log_file			=>	"../logs/striker.log",
+			skins				=>	"../html/skins/",
+		},
+		# These are setuid root C-wrapper scripts that allow apache to
+		# make system calls as root.
+		setuid				=>	{
+			'call_gather-system-info'	=>	"/var/www/tools/call_gather-system-info",
+		},
+		sys				=>	{
+			error_limit			=>	1000,
+			language			=>	"en_CA",
+			html_lang			=>	"en",
+			skin				=>	"alteeve",
+			version				=>	"0.0.1",
+		},
+		url				=>	{
+			skins				=>	"/skins/",
+			cgi				=>	"/cgi-bin/",
+		},
+		# Config values needed to managing strings
+		strings				=>	{
+			encoding			=>	"",
+			force_utf8			=>	0,
+			xml_version			=>	"",
+		},
+		# The actual strings
+		string				=>	{},
+	};
+	
+	return($conf);
+}
+
+# At this point in time, all this does is print the content type needed for
+# printing to browsers.
+sub initialize_http
+{
+	my ($conf) = @_;
+	
+	print "Content-type: text/html; charset=utf-8\n\n";
+	
+	return(0);
+}
+
+# This takes a completed string and inserts variables into it as needed.
+sub insert_variables_into_string
+{
+	my ($conf, $string, $variables) = @_;
+	
+	my $i = 0;
+	while ($string =~ /#!var!(.+?)!#/s)
+	{
+		my $variable = $1;
+		#print "$THIS_FILE ".__LINE__."; variable [$i]: [$variables->[$i]]\n";
+		if (not defined $variables->{$variable})
+		{
+			# I can't expect there to always be a defined value in
+			# the variables array at any given position so if it's
+			# blank I blank the key.
+			$string =~ s/#!var!$variable!#//;
+		}
+		else
+		{
+			my $value = $variables->{$variable};
+			chomp $value;
+			$string =~ s/#!var!$variable!#/$value/;
+		}
+		
+		# Die if I've looped too many times.
+		if ($i > $conf->{sys}{error_limit})
+		{
+			hard_die($conf, $THIS_FILE, __LINE__, 7, "Infitie loop detected will inserting variables into the string: [$string]. If this is triggered erroneously, increase the 'sys::error_limit' value.\n");
+		}
+		$i++;
+	}
+	
+	#print "$THIS_FILE ".__LINE__."; << string: [$string]\n";
+	return($string);
+}
+
+# This records log messages to the log file.
+sub record
+{
+	my ($conf, $variables) = @_;
+	
+	my $line    = $conf->{line}    ? $conf->{line}    : "--";
+	my $file    = $conf->{file}    ? $conf->{file}    : "--";
+	my $message = $conf->{message} ? $conf->{message} : "--";
+	
+	my $fh = $conf->{handles}{'log'};
+	if (not $fh)
+	{
+		$fh                     = IO::Handle->new();
+		$conf->{handles}{'log'} = $fh;
+		my $current_dir         = $ENV{CONTEXT_DOCUMENT_ROOT} ? $ENV{CONTEXT_DOCUMENT_ROOT} : $ENV{PWD} ? $ENV{PWD} : "/var/www/cgi-bin/";
+		my $log_file            = $current_dir.$conf->{path}{log_file};
+		open ($fh, ">>$log_file") or hard_die($conf, $THIS_FILE, __LINE__, 13, "Unable to open the file: [$log_file] for writting. The error was: $!.\n");
+		
+		print $fh "======\nStriker - AN! Cluster Dashboard - Opening log at ".time."\n";
+	}
+	print $fh $message;
+	
+	return(0);
+}
+
+# This takes the name of a template file, the name of a template section within
+# the file, a hash containing values to feed into variables and generates a 
+# page to display formatted according to the page.
+sub template
+{
+	my ($conf, $file, $template, $variables, $replace) = @_;
+	
+	my @contents;
+	# Down the road, I may want to have different suffixes depending on the
+	# user's environment. For now, it'll always be ".html".
+	my $suffix        = ".html";
+	my $current_dir   = $ENV{CONTEXT_DOCUMENT_ROOT} ? $ENV{CONTEXT_DOCUMENT_ROOT} : $ENV{PWD} ? $ENV{PWD} : "/var/www/cgi-bin/";
+	my $template_file = $current_dir."/".$conf->{path}{skins}."/".$conf->{sys}{skin}."/".$file.$suffix;
+	
+	# Make sure the file exists.
+	if (not -e $template_file)
+	{
+		hard_die($conf, $THIS_FILE, __LINE__, 10, "The template file: [$template_file] does not appear to exist.\n");
+	}
+	elsif (not -r $template_file)
+	{
+		my $user  = getpwuid($<);
+		hard_die($conf, $THIS_FILE, __LINE__, 11, "The template file: [$template_file] is not readable by the user this program is running as the user: [$user]. Please check the permissions on the template file and it's parent directory.\n");
+	}
+	
+	# Read in the raw template.
+	my $in_template = 0;
+	my $read        = IO::Handle->new();
+	my $shell_call  = "$template_file";
+	open ($read, $shell_call) or hard_die($conf, $THIS_FILE, __LINE__, 1, "Failed to read: [$shell_call]. The error was: $!\n");
+	binmode $read, ":utf8:";
+	while (<$read>)
+	{
+		chomp;
+		my $line = $_;
+		
+		if ($line =~ /<!-- start $template -->/)
+		{
+			$in_template = 1;
+			next;
+		}
+		if ($line =~ /<!-- end $template -->/)
+		{
+			# Once I hit this, I am done.
+			$in_template = 0;
+			last;
+		}
+		if ($in_template)
+		{
+			# Read in the template.
+			push @contents, $line;
+		}
+	}
+	$read->close();
+	
+	# Now parse the contents for replacement keys.
+	my $page = "<!-- Start template: [$template] from file: [$file] -->\n";
+	foreach my $string (@contents)
+	{
+		# Replace the '#!replace!...!#' substitution keys.
+		($string) = process_string_replace($conf, $string, $replace, $template_file, $template);
+		
+		# Process all the #!...!# escape variables.
+		#print "$THIS_FILE ".__LINE__."; >> string: [$string]\n";
+		($string) = process_string($conf, $string, $variables);
+		#print "$THIS_FILE ".__LINE__."; << string: [$string]\n";
+		$page .= "$string\n";
+	}
+	$page .= "<!-- End template: [$template] from file: [$file] -->\n\n";
+	
+	return($page);
+}
+
+# This takes a MAC address and returns the vendor.
+sub translate_mac_to_vendor
+{
+	my ($conf, $mac) = @_;
+	
+	my $string_key =  lc($mac);
+	   $string_key =~ s/^(\w\w):(\w\w):(\w\w):.*/oui_$1$2$3/;
+	
+	#my $vendor =  $conf->{string}{lang}{common}{key}{$string_key};
+	my $vendor =  $conf->{string}{common}{key}{$string_key}{content};
+	   $vendor =  get_string($conf, {key => 'generic_0005', variables => {mac => $mac}}) if not $vendor;
+	   $vendor =~ s/#!var!mac!#/$mac/;
+	
+	return($vendor);
+}
+
+# Process all the other #!...!# escape variables.
+sub process_string
+{
+	my ($conf, $string, $variables) = @_;
+	
+	# Insert variables into #!var!x!# 
+	($string) = insert_variables_into_string($conf, $string, $variables);
+	
+	my $i = 0;
+	while ($string =~ /#!(.+?)!#/s)
+	{
+		# Insert strings that are referenced in this string.
+		($string) = process_string_insert_strings($conf, $string);
+		
+		# Protect unmatchable keys.
+		($string) = process_string_protect_escape_variables($conf, $string, "string");
+
+		# Inject any 'conf' values.
+		($string) = process_string_conf_escape_variables($conf, $string);
+		
+		# Die if I've looped too many times.
+		if ($i > $conf->{sys}{error_limit})
+		{
+			hard_die($conf, $THIS_FILE, __LINE__, 8, "Infitie loop detected will processing escape variables in the string: [$string]. If this is triggered erroneously, increase the 'sys::error_limit' value.\n");
+		}
+		$i++;
+	}
+
+	# Restore and unrecognized substitution values.
+	($string) = process_string_restore_escape_variables($conf, $string);
+	
+	return($string);
+}
+
+# This looks for #!string!...!# substitution variables.
+sub process_string_insert_strings
+{
+	my ($conf, $string) = @_;
+	
+	while ($string =~ /#!string!(.+?)!#/)
+	{
+		my $key        = $1;
+		# I don't insert variables into strings here. If a complex
+		# string is needed, the user should process it and pass the
+		# completed string to the template function as a
+		# #!replace!...!# substitution variable.
+		my $say_string = get_string($conf, {key => $key});
+		if ($say_string eq "")
+		{
+			$string =~ s/#!string!$key!#/!! [$key] !!/;
+		}
+		else
+		{
+			$string =~ s/#!string!$key!#/$say_string/;
+		}
+	}
+	
+	return($string);
+}
+
+# This replaces "conf" escape variables using variables 
+sub process_string_conf_escape_variables
+{
+	my ($conf, $string) = @_;
+
+	while ($string =~ /#!conf!(.+?)!#/)
+	{
+		my $key   = $1;
+		my $value = "";
+		
+		# If the key has double-colons, I need to break it up and make
+		# each one a key in the multi-dimensional hash.
+		if ($key =~ /::/)
+		{
+			($value) = _get_hash_value_from_string($conf, $key);
+		}
+		else
+		{
+			# First dimension
+			($value) = defined $conf->{$key} ? $conf->{$key} : "!!Undefined config variable: [$key]!!";
+		}
+		$string =~ s/#!conf!$key!#/$value/;
+	}
+
+	return($string);
+}
+
+# Protect unrecognized or unused replacement keys by flipping '#!...!#' to
+# '_!|...|!_'. This gets reversed in 'process_string_restore_escape_variables()'.
+sub process_string_protect_escape_variables
+{
+	my ($conf, $string) = @_;
+
+	foreach my $check ($string =~ /#!(.+?)!#/)
+	{
+		if (
+			($check !~ /^free/)    &&
+			($check !~ /^replace/) &&
+			($check !~ /^conf/)    &&
+			($check !~ /^var/)
+		)
+		{
+			$string =~ s/#!($check)!#/_!\|$1\|!_/g;
+		}
+	}
+
+	return($string);
+}
+
+# This is used by the 'template()' function to insert '#!replace!...!#' 
+# replacement variables in templates.
+sub process_string_replace
+{
+	my ($conf, $string, $replace, $template_file, $template) = @_;
+	
+	my $i = 0;
+	while ($string =~ /#!replace!(.+?)!#/)
+	{
+		my $key   =  $1;
+		my $value =  defined $replace->{$key} ? $replace->{$key} : "!! Undefined replacement key: [$key] !!\n";
+		$string   =~ s/#!replace!$key!#/$value/;
+		
+		# Die if I've looped too many times.
+		if ($i > $conf->{sys}{error_limit})
+		{
+			hard_die($conf, $THIS_FILE, __LINE__, 12, "Infitie loop detected while replacing '#!replace!...!#' replacement variables in the template file: [$template_file] in the template: [$template]. If this is triggered erroneously, increase the 'sys::error_limit' value.\n");
+		}
+		$i++;
+	}
+	
+	return($string);
+}
+
+# This restores the original escape variable format for escape variables that
+# were protected by the 'process_string_protect_escape_variables()' function.
+sub process_string_restore_escape_variables
+{
+	my ($conf, $string)=@_;
+
+	# Restore and unrecognized substitution values.
+	my $i = 0;
+	while ($string =~ /_!\|(.+?)\|!_/s)
+	{
+		my $check  =  $1;
+		   $string =~ s/_!\|$check\|!_/#!$check!#/g;
+		
+		# Die if I've looped too many times.
+		if ($i > $conf->{sys}{error_limit})
+		{
+			hard_die($conf, $THIS_FILE, __LINE__, 9, "Infitie loop detected will restoring protected escape variables in the string: [$string]. If this is triggered erroneously, increase the 'sys::error_limit' value.\n");
+		}
+		$i++;
+	}
+
+	return($string);
+}
+
+# Read in the configuration file. If the file doesn't exist, initial setup will
+# be triggered.
+sub read_configuration_file
+{
+	my ($conf) = @_;
+	
+	if (not -e $conf->{path}{config_file})
+	{
+		# Must be a new install.
+		initial_configuration($conf);
+	}
+	else
+	{
+		my $read  = IO::Handle->new();
+		my $shell_call = "$conf->{file}{config}";
+		# This is causing a loop... can't call 'error' this early.
+		open ($read, $shell_call) or hard_die($conf, $THIS_FILE, __LINE__, 1, "Failed to read: [$shell_call]. The error was: $!\n");
+		binmode $read, ":utf8:";
+		while (<$read>)
+		{
+			chomp;
+			my $line = $_;
+			
+			# Protect '#!....!#' substitution variables.
+			$line =~ s/#!/_!\|/;
+			$line =~ s/!#/\|!_/;
+			
+			# Now remove anything after a hash
+			$line =~ s/#(.*)//;
+			
+			# And restore the substitution variables.
+			$line =~ s/_!\|/#!/;
+			$line =~ s/\|!_/!#/;
+			
+			# Skip lines without an = sign... no idea why they'd
+			# be here.
+			next if ($line !~ /=/);
+			
+			# Split on the first = sign
+			my ($variable, $value) = split/=/, $line, 2;
+			
+			# Crop leading and trailing spaces from the variables
+			# and values.
+			$variable =~ s/^\s+//;
+			$variable =~ s/\s+$//;
+			$value    =~ s/^\s+//;
+			$value    =~ s/\s+$//;
+
+			# Check if the variable needs to be split on '::' and
+			# stored in multi-dimensional hashes.
+			if ( $variable =~ /::/ )
+			{
+				_make_hash_reference($conf, $variable, $value);
+			}
+			else
+			{
+				# Simple variable, I can just store it's value.
+				$conf->{$variable} = $value;
+			}
+		}
+		$read->close();
+	}
+	
+	return(0);
+}
+
+# This reads in the strings XML file.
+sub read_strings
+{
+	my ($conf) = @_;
+	
+	my $string_ref = $conf;
+
+	my $in_comment  = 0;	# Set to '1' when in a comment stanza that spans more than one line.
+	my $in_data     = 0;	# Set to '1' when reading data that spans more than one line.
+	my $closing_key = "";	# While in_data, look for this key to know when we're done.
+	my $xml_version = "";	# The XML version of the strings file.
+	my $encoding    = "";	# The encoding used in the strings file. Should only be UTF-8.
+	my $data        = "";	# The data being read for the given key.
+	my $key_name    = "";	# This is a double-colon list of hash keys used to build each hash element.
+	
+	my $read        = IO::Handle->new;
+	my $shell_call  = "<$conf->{path}{languages}";
+	open ($read, $shell_call) or die hard_die($conf, $THIS_FILE, __LINE__, 1, "Failed to read: [$shell_call]. The error was: $!\n");
+	if ($conf->{strings}{force_utf8})
+	{
+		binmode $read, "encoding(utf8)";
+	}
+	while(<$read>)
+	{
+		chomp;
+		my $line=$_;
+
+		### Deal with comments.
+		# Look for a closing stanza if I am (still) in a comment.
+		if (($in_comment) && ( $line =~ /-->/ ))
+		{
+			$line       =~ s/^(.*?)-->//;
+			$in_comment =  0;
+		}
+		next if ($in_comment);
+
+		# Strip out in-line comments.
+		while ($line =~ /<!--(.*?)-->/)
+		{
+			$line =~ s/<!--(.*?)-->//;
+		}
+
+		# See if there is an comment opening stanza.
+		if ($line =~ /<!--/)
+		{
+			$in_comment =  1;
+			$line       =~ s/<!--(.*)$//;
+		}
+		### Comments dealt with.
+
+		### Parse data
+		# XML data
+		if ($line =~ /<\?xml version="(.*?)" encoding="(.*?)"\?>/)
+		{
+			$conf->{strings}{xml_version} = $1;
+			$conf->{strings}{encoding}    = $2;
+			next;
+		}
+
+		# If I am not "in_data" (looking for more data for a currently in use key).
+		if (not $in_data)
+		{
+			# Skip blank lines.
+			next if $line =~ /^\s+$/;
+			next if $line eq "";
+			$line         =~ s/^\s+//;
+
+			# Look for an inline data-structure.
+			if (($line =~ /<(.*?) (.*?)>/) && ($line =~ /<\/$1>/))
+			{
+				# First, look for CDATA.
+				my $cdata = "";
+				if ($line =~ /<!\[CDATA\[(.*?)\]\]>/)
+				{
+					$cdata =  $1;
+					$line  =~ s/<!\[CDATA\[$cdata\]\]>/$cdata/;
+				}
+
+				# Pull out the key and name.
+				my $key  =  $line;
+				my $name =  $line;
+				my $data =  $line;
+				   $key  =~ s/^<(\w+).*/$1/;
+				   $name =~ s/^<$key name="(\w+).*/$1/;
+				   $data =~ s/^<$key name="$name">(.*?)<\/$key>(.*)/$1/;
+				   $data =  $cdata if $cdata;
+				_make_hash_reference($string_ref, "${key_name}::${key}::${name}::content", $data);
+				next;
+			}
+
+			# Look for a self-contained unkeyed structure.
+			if (($line =~ /<(.*?)>/) && ($line =~ /<\/$1>/))
+			{
+				my $key  =  $line;
+				   $key  =~ s/<(.*?)>.*/$1/;
+				   $data =  $line;
+				   $data =~ s/<$key>(.*?)<\/$key>/$1/;
+				_make_hash_reference($string_ref, "${key_name}::${key}", $data);
+				next;
+			}
+
+			# Look for a line with a closing stanza.
+			if ($line =~ /<\/(.*?)>/)
+			{
+				my $closing_key =  $line;
+				   $closing_key =~ s/<\/(\w+)>/$1/;
+				   $key_name    =~ s/(.*?)::$closing_key(.*)/$1/;
+				next;
+			}
+
+			# Look for a key with an embedded value.
+			if ($line =~ /^<(\w+) name="(.*?)" (\w+)="(.*?)">/)
+			{
+				my $key   =  $1;
+				my $name  =  $2;
+				my $key2  =  $3;
+				my $data  =  $4;
+				$key_name .= "::${key}::${name}";
+				_make_hash_reference($string_ref, "${key_name}::${key}::${key2}", $data);
+				next;
+			}
+
+			# Look for a contained value.
+			if ($line =~ /^<(\w+) name="(.*?)">(.*)/)
+			{
+				my $key  = $1;
+				my $name = $2;
+				   $data = $3;	# Don't scope locally in case this data spans lines.
+
+				if ($data =~ /<\/$key>/)
+				{
+					# Fully contained data.
+					$data =~ s/<\/$key>(.*)$//;
+					_make_hash_reference($string_ref, "${key_name}::${key}::${name}", $data);
+				}
+				else
+				{
+					# Element closes later.
+					$in_data     =  1;
+					$closing_key =  $key;
+					$name        =~ s/^<$key name="(\w+).*/$1/;
+					$key_name    .= "::${key}::${name}";
+					$data        =~ s/^<$key name="$name">(.*)/$1/;
+					$data        .= "\n";
+				}
+				next;
+			}
+
+			# Look for an opening data structure.
+			if ($line =~ /<(.*?)>/)
+			{
+				my $key      =  $1;
+				   $key_name .= "::$key";
+				next;
+			}
+		}
+		else
+		{
+			if ($line !~ /<\/$closing_key>/)
+			{
+				$data .= "$line\n";
+			}
+			else
+			{
+				$in_data =  0;
+				$line    =~ s/(.*?)<\/$closing_key>/$1/;
+				$data    .= "$line";
+
+				# If there is CDATA, set it aside.
+				my $save_data = "";
+				my @lines     = split/\n/, $data;
+
+				my $in_cdata  = 0;
+				foreach my $line (@lines)
+				{
+					if (($in_cdata == 1) && ($line =~ /]]>$/))
+					{
+						# CDATA closes here.
+						$line      =~ s/]]>$//;
+						$save_data .= "\n$line";
+						$in_cdata  =  0;
+					}
+					if (($line =~ /^<\!\[CDATA\[/) && ($line =~ /]]>$/))
+					{
+						# CDATA opens and closes in this line.
+						$line      =~ s/^<\!\[CDATA\[//;
+						$line      =~ s/]]>$//;
+						$save_data .= "\n$line";
+					}
+					elsif ($line =~ /^<\!\[CDATA\[/)
+					{
+						$line     =~ s/^<\!\[CDATA\[//;
+						$in_cdata =  1;
+					}
+					
+					if ($in_cdata == 1)
+					{
+						# Don't analyze, just store.
+						$save_data .= "\n$line";
+					}
+					else
+					{
+						# Not in CDATA, look for XML data.
+						#print "Checking: [$line] for an XML item.\n";
+						while (($line =~ /<(.*?)>/) && ($line =~ /<\/$1>/))
+						{
+							# Found a value.
+							my $key  =  $line;
+							   $key  =~ s/.*?<(.*?)>.*/$1/;
+							   $data =  $line;
+							   $data =~ s/.*?<$key>(.*?)<\/$key>/$1/;
+
+							#print "Saving: key: [$key], [${key_name}::${key}] -> [$data]\n";
+							_make_hash_reference($string_ref, "${key_name}::${key}", $data);
+							$line =~ s/<$key>(.*?)<\/$key>//;
+						}
+						$save_data .= "\n$line";
+					}
+					#print "$THIS_FILE ".__LINE__."; [$in_cdata] Check: [$line]\n";
+				}
+
+				$save_data =~ s/^\n//;
+				if ($save_data =~ /\S/s)
+				{
+					#print "$THIS_FILE ".__LINE__."; save_data: [$save_data]\n";
+					_make_hash_reference($string_ref, "${key_name}::content", $save_data);
+				}
+
+				$key_name =~ s/(.*?)::$closing_key(.*)/$1/;
+			}
+		}
+		next if $line eq "";
+	}
+	$read->close();
+	#use Data::Dumper; print Dumper $conf;
+	
+	return(0);
+}
+
+###############################################################################
+### Private functions                                                       ###
+###############################################################################
+
+### Contributed by Shaun Fryer and Viktor Pavlenko by way of TPM.
+# This is a helper to the below '_make_hash_reference' function. It is called
+# each time a new string is to be created as a new hash key in the passed hash
+# reference.
+sub _add_hash_reference
+{
+	my ($href1, $href2) = @_;
+
+	for my $key (keys %$href2)
+	{
+		if (ref $href1->{$key} eq 'HASH')
+		{
+			_add_hash_reference($href1->{$key}, $href2->{$key});
+		}
+		else
+		{
+			$href1->{$key} = $href2->{$key};
+		}
+	}
+}
+
+# This is the reverse of '_make_hash_reference()'. It takes a double-colon
+# separated string, breaks it up and returns the value stored in the
+# corosponding $conf hash.
+sub _get_hash_value_from_string
+{
+	my ($conf, $key_string) = @_;
+	
+	my @keys      = split /::/, $key_string;
+	my $last_key  = pop @keys;
+	my $this_href = $conf;
+	while (my $key = shift @keys)
+	{
+		$this_href = $this_href->{$key};
+	}
+	
+	my $value = defined $this_href->{$last_key} ? $this_href->{$last_key} : "!!Undefined config variable: [$key_string]!!";
+	
+	return($value);
+}
+
+### Contributed by Shaun Fryer and Viktor Pavlenko by way of TPM.
+# This takes a string with double-colon seperators and divides on those
+# double-colons to create a hash reference where each element is a hash key.
+sub _make_hash_reference
+{
+	my ($href, $key_string, $value) = @_;
+
+	my @keys            = split /::/, $key_string;
+	my $last_key        = pop @keys;
+	my $_href           = {};
+	$_href->{$last_key} = $value;
+	while (my $key = pop @keys)
+	{
+		my $elem      = {};
+		$elem->{$key} = $_href;
+		$_href        = $elem;
+	}
+	_add_hash_reference($href, $_href);
+}
 
 1;
