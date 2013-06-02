@@ -1,8 +1,13 @@
--=] AN!Striker [=-
 
-  This is the next generation "dashboard" for Alteeve's Niche! "Anvil" 
-high-availability platforms. It will eventually replace the 
-"AN!Cluster Dashboard".
+                               Alteeve's Niche!
+                               
+                              https://alteeve.ca
+
+-=] Striker [=-                                                -=] Monitor [=-
+
+  This is the next generation "dashboard" and node monitor for 
+Alteeve's Niche!'s "Anvil!" high-availability platform. It will eventually 
+replace the "AN!Cluster Dashboard" and "AN!Cluster Monitor".
 
   As it stands now, this program is not at all ready for use. If you are not
 a developer, you will probably want to continue using AN!CDB for the time 

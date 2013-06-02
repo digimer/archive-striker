@@ -1,0 +1,87 @@
+The Anvil! Monitor
+
+This program runs on cluster nodes. It has two parts;
+
+* Scanner
+* Interface
+
+The scanner runs as a daemon in the background and watches for changes in the
+node itself, the monitored devices and the cluster stack. It triggers alerts
+when needed.
+
+The interface is a small web-based application that provides a point-in-time
+snapshot of the node's health. It allows an administrator to set certain things
+like the company name, the email recipient list and display options like the
+language used and whether the displays values are in metric or imperial. It
+will also allow changing the password for the interface login.
+
+
+
+Installation (raw, unfinished, unedited);
+(╯°□°）╯︵ ┻━┻
+
+yum -y install cpan perl-YAML-Tiny perl-Net-SSLeay gcc make perl-CGI fence-agents syslinux openssl-devel postgresql-server postgresql-plperl httpd
+yum -y groupinstall development
+sed -i 's/SELINUX=.*/SELINUX=disabled/' /etc/selinux/config
+setenforce 0
+chkconfig iptables off
+chkconfig ip6tables off
+/etc/init.d/iptables stop
+/etc/init.d/ip6tables stop
+ 
+# Automate the install of the perl modules.
+export PERL_MM_USE_DEFAULT=1
+perl -MCPAN -e 'install("YAML")'
+perl -MCPAN -e 'install Moose::Role'
+perl -MCPAN -e 'install Throwable::Error'
+perl -MCPAN -e 'install Email::Sender::Transport::SMTP::TLS'
+
+# Apache setup
+mkdir /var/www/home
+chown apache:apache /var/www/home/
+cp /etc/passwd ~/passwd.orig
+sed -i 's/apache\(.*\)www:\/sbin\/nologin/apache\1www\/home:\/bin\/bash/g' /etc/passwd
+
+diff -u ~/passwd.orig /etc/passwd
+
+su - apache
+
+mkdir /var/www/home/media
+ssh-keygen -t rsa -N "" -b 4095 -f ~/.ssh/id_rsa
+
+htpasswd -c /var/www/home/htpasswd admin
+
+exit
+
+cp /etc/httpd/conf/httpd.conf /etc/httpd/conf/httpd.conf.orig
+sed -i 's/Timeout 60/Timeout 6000/' /etc/httpd/conf/httpd.conf
+sed -i 's/Listen 80/Listen 251/' /etc/httpd/conf/httpd.conf
+sed -i '/<Directory "\/var\/www\/cgi-bin">/ a \
+    # Password login \
+    AuthType Basic \
+    AuthName "AN!Cluster Monitor - #!Customer Name!#" \
+    AuthUserFile \/var\/www\/home\/htpasswd \
+    Require user admin' /etc/httpd/conf/httpd.conf
+
+# Update this to replace "Customer Name" with a variable from the installer
+sed -i "s/#\!Customer Name\!#/Alteeve's Niche\!/" /etc/httpd/conf/httpd.conf
+
+/etc/init.d/httpd start
+/etc/init.d/postgresql initdb
+/etc/init.d/postgresql start
+su postgres -c "createuser -S -d -R -l alteeve"
+su postgres -c "psql template1"
+
+##############
+# psql shell #
+##############
+ALTER ROLE postgres WITH PASSWORD 'secret';
+ALTER ROLE alteeve WITH PASSWORD 'secret';
+\q
+
+cp /var/lib/pgsql/data/pg_hba.conf /var/lib/pgsql/data/pg_hba.conf.orig
+chown postgres:postgres /var/lib/pgsql/data/pg_hba.conf.orig
+sed -i 's/    ident/    md5/' /var/lib/pgsql/data/pg_hba.conf
+sed -i '/# TYPE  DATABASE/ a host    all         all         10.20.0.0/16          md5' /var/lib/pgsql/data/pg_hba.conf
+/etc/init.d/postgresql restart
+

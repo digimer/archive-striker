@@ -1,0 +1,53 @@
+#!/usr/bin/perl
+#
+# AN!Striker - Alteeve's Niche! System Monitor for "Anvil!" VM clusters
+# 
+# This software is released under the GNU GPL v2+ license.
+# 
+# No warranty is provided. Do not use this software unless you are willing and
+# able to take full liability for it's use. The authors take care to prevent
+# unexpected side effects when using this program. However, no software is
+# perfect and bugs may exist which could lead to hangs or crashes in the
+# program, in your cluster and possibly even data loss.
+# 
+# If you are concerned about these risks, please stick to command line tools.
+# 
+# This program is designed to extend clusters built according to this tutorial:
+# - https://alteeve.com/w/2-Node_Red_Hat_KVM_Cluster_Tutorial
+#
+# This program's source code and updates are available on Github:
+# - https://github.com/digimer/striker
+#
+# Author;
+# Alteeve's Niche!  -  https://alteeve.ca/w/
+# Madison Kelly     -  mkelly@alteeve.ca
+# 
+# TODO:
+# - Everything. o_o
+# 
+
+# Use modules
+use strict;
+use warnings;
+use CGI;
+use utf8;
+use IO::Handle;
+
+# Require libraries
+require '../cgi-bin/common.lib';	# This gets copied from the Striker version.
+require 'monitor.lib';
+
+# Set static variables.
+my $THIS_FILE = "monitor";
+
+my ($conf) = initialize();
+
+# Check for passed CGI variables.
+get_cgi_vars($conf, [
+	"config_name",
+	"language",
+	"system_name",
+]);
+
+# Go to bed...
+exit (0);
