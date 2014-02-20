@@ -5,10 +5,632 @@
 
 use strict;
 use warnings;
+use Encode;
 
 # Set static variables.
 my $THIS_FILE = "common.lib";
 
+
+# This builds an HTML select statement out of the timezones. Please 
+# periodically update with 'tools/generate_tz_list' (update this and the
+# strings XML).
+sub build_timezone_select
+{
+	my ($conf, $variables) = @_;
+	
+	# Convert the hash variables to string variables.
+	my $select_name     = $variables->{select_name}     ? $variables->{select_name}     : "";
+	my $select_id       = $variables->{select_id}       ? $variables->{select_id}       : "";
+	my $selected_option = $variables->{selected_option} ? $variables->{selected_option} : "";
+	my $blank_option    = $variables->{blank_option}    ? $variables->{blank_option}    : 0;
+	my $attributes      = $variables->{attributes}      ? $variables->{attributes}      : "";
+	
+	# Start building the <select ...>
+	my $select = "<select name=\"$select_name\" id=\"$select_id\">\n";
+	
+	# Add attributes, if any.
+	if ($attributes)
+	{
+		$select =~ s/>/ $attributes>/;
+	}
+	
+	# Insert a blank option, if requested.
+	if ($blank_option)
+	{
+		$select .= "<option></option>\n";
+	}
+	
+	# Add the TZs.
+	$select .= "<option value=\"Africa/Abidjan\">".get_string($conf, {key => "tz_africa/abidjan"})."</option>\n";
+	$select .= "<option value=\"Africa/Accra\">".get_string($conf, {key => "tz_africa/accra"})."</option>\n";
+	$select .= "<option value=\"Africa/Addis_Ababa\">".get_string($conf, {key => "tz_africa/addis_ababa"})."</option>\n";
+	$select .= "<option value=\"Africa/Algiers\">".get_string($conf, {key => "tz_africa/algiers"})."</option>\n";
+	$select .= "<option value=\"Africa/Asmara\">".get_string($conf, {key => "tz_africa/asmara"})."</option>\n";
+	$select .= "<option value=\"Africa/Asmera\">".get_string($conf, {key => "tz_africa/asmera"})."</option>\n";
+	$select .= "<option value=\"Africa/Bamako\">".get_string($conf, {key => "tz_africa/bamako"})."</option>\n";
+	$select .= "<option value=\"Africa/Bangui\">".get_string($conf, {key => "tz_africa/bangui"})."</option>\n";
+	$select .= "<option value=\"Africa/Banjul\">".get_string($conf, {key => "tz_africa/banjul"})."</option>\n";
+	$select .= "<option value=\"Africa/Bissau\">".get_string($conf, {key => "tz_africa/bissau"})."</option>\n";
+	$select .= "<option value=\"Africa/Blantyre\">".get_string($conf, {key => "tz_africa/blantyre"})."</option>\n";
+	$select .= "<option value=\"Africa/Brazzaville\">".get_string($conf, {key => "tz_africa/brazzaville"})."</option>\n";
+	$select .= "<option value=\"Africa/Bujumbura\">".get_string($conf, {key => "tz_africa/bujumbura"})."</option>\n";
+	$select .= "<option value=\"Africa/Cairo\">".get_string($conf, {key => "tz_africa/cairo"})."</option>\n";
+	$select .= "<option value=\"Africa/Casablanca\">".get_string($conf, {key => "tz_africa/casablanca"})."</option>\n";
+	$select .= "<option value=\"Africa/Ceuta\">".get_string($conf, {key => "tz_africa/ceuta"})."</option>\n";
+	$select .= "<option value=\"Africa/Conakry\">".get_string($conf, {key => "tz_africa/conakry"})."</option>\n";
+	$select .= "<option value=\"Africa/Dakar\">".get_string($conf, {key => "tz_africa/dakar"})."</option>\n";
+	$select .= "<option value=\"Africa/Dar_es_Salaam\">".get_string($conf, {key => "tz_africa/dar_es_salaam"})."</option>\n";
+	$select .= "<option value=\"Africa/Djibouti\">".get_string($conf, {key => "tz_africa/djibouti"})."</option>\n";
+	$select .= "<option value=\"Africa/Douala\">".get_string($conf, {key => "tz_africa/douala"})."</option>\n";
+	$select .= "<option value=\"Africa/El_Aaiun\">".get_string($conf, {key => "tz_africa/el_aaiun"})."</option>\n";
+	$select .= "<option value=\"Africa/Freetown\">".get_string($conf, {key => "tz_africa/freetown"})."</option>\n";
+	$select .= "<option value=\"Africa/Gaborone\">".get_string($conf, {key => "tz_africa/gaborone"})."</option>\n";
+	$select .= "<option value=\"Africa/Harare\">".get_string($conf, {key => "tz_africa/harare"})."</option>\n";
+	$select .= "<option value=\"Africa/Johannesburg\">".get_string($conf, {key => "tz_africa/johannesburg"})."</option>\n";
+	$select .= "<option value=\"Africa/Juba\">".get_string($conf, {key => "tz_africa/juba"})."</option>\n";
+	$select .= "<option value=\"Africa/Kampala\">".get_string($conf, {key => "tz_africa/kampala"})."</option>\n";
+	$select .= "<option value=\"Africa/Khartoum\">".get_string($conf, {key => "tz_africa/khartoum"})."</option>\n";
+	$select .= "<option value=\"Africa/Kigali\">".get_string($conf, {key => "tz_africa/kigali"})."</option>\n";
+	$select .= "<option value=\"Africa/Kinshasa\">".get_string($conf, {key => "tz_africa/kinshasa"})."</option>\n";
+	$select .= "<option value=\"Africa/Lagos\">".get_string($conf, {key => "tz_africa/lagos"})."</option>\n";
+	$select .= "<option value=\"Africa/Libreville\">".get_string($conf, {key => "tz_africa/libreville"})."</option>\n";
+	$select .= "<option value=\"Africa/Lome\">".get_string($conf, {key => "tz_africa/lome"})."</option>\n";
+	$select .= "<option value=\"Africa/Luanda\">".get_string($conf, {key => "tz_africa/luanda"})."</option>\n";
+	$select .= "<option value=\"Africa/Lubumbashi\">".get_string($conf, {key => "tz_africa/lubumbashi"})."</option>\n";
+	$select .= "<option value=\"Africa/Lusaka\">".get_string($conf, {key => "tz_africa/lusaka"})."</option>\n";
+	$select .= "<option value=\"Africa/Malabo\">".get_string($conf, {key => "tz_africa/malabo"})."</option>\n";
+	$select .= "<option value=\"Africa/Maputo\">".get_string($conf, {key => "tz_africa/maputo"})."</option>\n";
+	$select .= "<option value=\"Africa/Maseru\">".get_string($conf, {key => "tz_africa/maseru"})."</option>\n";
+	$select .= "<option value=\"Africa/Mbabane\">".get_string($conf, {key => "tz_africa/mbabane"})."</option>\n";
+	$select .= "<option value=\"Africa/Mogadishu\">".get_string($conf, {key => "tz_africa/mogadishu"})."</option>\n";
+	$select .= "<option value=\"Africa/Monrovia\">".get_string($conf, {key => "tz_africa/monrovia"})."</option>\n";
+	$select .= "<option value=\"Africa/Nairobi\">".get_string($conf, {key => "tz_africa/nairobi"})."</option>\n";
+	$select .= "<option value=\"Africa/Ndjamena\">".get_string($conf, {key => "tz_africa/ndjamena"})."</option>\n";
+	$select .= "<option value=\"Africa/Niamey\">".get_string($conf, {key => "tz_africa/niamey"})."</option>\n";
+	$select .= "<option value=\"Africa/Nouakchott\">".get_string($conf, {key => "tz_africa/nouakchott"})."</option>\n";
+	$select .= "<option value=\"Africa/Ouagadougou\">".get_string($conf, {key => "tz_africa/ouagadougou"})."</option>\n";
+	$select .= "<option value=\"Africa/Porto-Novo\">".get_string($conf, {key => "tz_africa/porto-novo"})."</option>\n";
+	$select .= "<option value=\"Africa/Sao_Tome\">".get_string($conf, {key => "tz_africa/sao_tome"})."</option>\n";
+	$select .= "<option value=\"Africa/Timbuktu\">".get_string($conf, {key => "tz_africa/timbuktu"})."</option>\n";
+	$select .= "<option value=\"Africa/Tripoli\">".get_string($conf, {key => "tz_africa/tripoli"})."</option>\n";
+	$select .= "<option value=\"Africa/Tunis\">".get_string($conf, {key => "tz_africa/tunis"})."</option>\n";
+	$select .= "<option value=\"Africa/Windhoek\">".get_string($conf, {key => "tz_africa/windhoek"})."</option>\n";
+	$select .= "<option value=\"America/Adak\">".get_string($conf, {key => "tz_america/adak"})."</option>\n";
+	$select .= "<option value=\"America/Anchorage\">".get_string($conf, {key => "tz_america/anchorage"})."</option>\n";
+	$select .= "<option value=\"America/Anguilla\">".get_string($conf, {key => "tz_america/anguilla"})."</option>\n";
+	$select .= "<option value=\"America/Antigua\">".get_string($conf, {key => "tz_america/antigua"})."</option>\n";
+	$select .= "<option value=\"America/Araguaina\">".get_string($conf, {key => "tz_america/araguaina"})."</option>\n";
+	$select .= "<option value=\"America/Argentina/Buenos_Aires\">".get_string($conf, {key => "tz_america/argentina/buenos_aires"})."</option>\n";
+	$select .= "<option value=\"America/Argentina/Catamarca\">".get_string($conf, {key => "tz_america/argentina/catamarca"})."</option>\n";
+	$select .= "<option value=\"America/Argentina/ComodRivadavia\">".get_string($conf, {key => "tz_america/argentina/comodrivadavia"})."</option>\n";
+	$select .= "<option value=\"America/Argentina/Cordoba\">".get_string($conf, {key => "tz_america/argentina/cordoba"})."</option>\n";
+	$select .= "<option value=\"America/Argentina/Jujuy\">".get_string($conf, {key => "tz_america/argentina/jujuy"})."</option>\n";
+	$select .= "<option value=\"America/Argentina/La_Rioja\">".get_string($conf, {key => "tz_america/argentina/la_rioja"})."</option>\n";
+	$select .= "<option value=\"America/Argentina/Mendoza\">".get_string($conf, {key => "tz_america/argentina/mendoza"})."</option>\n";
+	$select .= "<option value=\"America/Argentina/Rio_Gallegos\">".get_string($conf, {key => "tz_america/argentina/rio_gallegos"})."</option>\n";
+	$select .= "<option value=\"America/Argentina/Salta\">".get_string($conf, {key => "tz_america/argentina/salta"})."</option>\n";
+	$select .= "<option value=\"America/Argentina/San_Juan\">".get_string($conf, {key => "tz_america/argentina/san_juan"})."</option>\n";
+	$select .= "<option value=\"America/Argentina/San_Luis\">".get_string($conf, {key => "tz_america/argentina/san_luis"})."</option>\n";
+	$select .= "<option value=\"America/Argentina/Tucuman\">".get_string($conf, {key => "tz_america/argentina/tucuman"})."</option>\n";
+	$select .= "<option value=\"America/Argentina/Ushuaia\">".get_string($conf, {key => "tz_america/argentina/ushuaia"})."</option>\n";
+	$select .= "<option value=\"America/Aruba\">".get_string($conf, {key => "tz_america/aruba"})."</option>\n";
+	$select .= "<option value=\"America/Asuncion\">".get_string($conf, {key => "tz_america/asuncion"})."</option>\n";
+	$select .= "<option value=\"America/Atikokan\">".get_string($conf, {key => "tz_america/atikokan"})."</option>\n";
+	$select .= "<option value=\"America/Atka\">".get_string($conf, {key => "tz_america/atka"})."</option>\n";
+	$select .= "<option value=\"America/Bahia\">".get_string($conf, {key => "tz_america/bahia"})."</option>\n";
+	$select .= "<option value=\"America/Bahia_Banderas\">".get_string($conf, {key => "tz_america/bahia_banderas"})."</option>\n";
+	$select .= "<option value=\"America/Barbados\">".get_string($conf, {key => "tz_america/barbados"})."</option>\n";
+	$select .= "<option value=\"America/Belem\">".get_string($conf, {key => "tz_america/belem"})."</option>\n";
+	$select .= "<option value=\"America/Belize\">".get_string($conf, {key => "tz_america/belize"})."</option>\n";
+	$select .= "<option value=\"America/Blanc-Sablon\">".get_string($conf, {key => "tz_america/blanc-sablon"})."</option>\n";
+	$select .= "<option value=\"America/Boa_Vista\">".get_string($conf, {key => "tz_america/boa_vista"})."</option>\n";
+	$select .= "<option value=\"America/Bogota\">".get_string($conf, {key => "tz_america/bogota"})."</option>\n";
+	$select .= "<option value=\"America/Boise\">".get_string($conf, {key => "tz_america/boise"})."</option>\n";
+	$select .= "<option value=\"America/Buenos_Aires\">".get_string($conf, {key => "tz_america/buenos_aires"})."</option>\n";
+	$select .= "<option value=\"America/Cambridge_Bay\">".get_string($conf, {key => "tz_america/cambridge_bay"})."</option>\n";
+	$select .= "<option value=\"America/Campo_Grande\">".get_string($conf, {key => "tz_america/campo_grande"})."</option>\n";
+	$select .= "<option value=\"America/Cancun\">".get_string($conf, {key => "tz_america/cancun"})."</option>\n";
+	$select .= "<option value=\"America/Caracas\">".get_string($conf, {key => "tz_america/caracas"})."</option>\n";
+	$select .= "<option value=\"America/Catamarca\">".get_string($conf, {key => "tz_america/catamarca"})."</option>\n";
+	$select .= "<option value=\"America/Cayenne\">".get_string($conf, {key => "tz_america/cayenne"})."</option>\n";
+	$select .= "<option value=\"America/Cayman\">".get_string($conf, {key => "tz_america/cayman"})."</option>\n";
+	$select .= "<option value=\"America/Chicago\">".get_string($conf, {key => "tz_america/chicago"})."</option>\n";
+	$select .= "<option value=\"America/Chihuahua\">".get_string($conf, {key => "tz_america/chihuahua"})."</option>\n";
+	$select .= "<option value=\"America/Coral_Harbour\">".get_string($conf, {key => "tz_america/coral_harbour"})."</option>\n";
+	$select .= "<option value=\"America/Cordoba\">".get_string($conf, {key => "tz_america/cordoba"})."</option>\n";
+	$select .= "<option value=\"America/Costa_Rica\">".get_string($conf, {key => "tz_america/costa_rica"})."</option>\n";
+	$select .= "<option value=\"America/Creston\">".get_string($conf, {key => "tz_america/creston"})."</option>\n";
+	$select .= "<option value=\"America/Cuiaba\">".get_string($conf, {key => "tz_america/cuiaba"})."</option>\n";
+	$select .= "<option value=\"America/Curacao\">".get_string($conf, {key => "tz_america/curacao"})."</option>\n";
+	$select .= "<option value=\"America/Danmarkshavn\">".get_string($conf, {key => "tz_america/danmarkshavn"})."</option>\n";
+	$select .= "<option value=\"America/Dawson\">".get_string($conf, {key => "tz_america/dawson"})."</option>\n";
+	$select .= "<option value=\"America/Dawson_Creek\">".get_string($conf, {key => "tz_america/dawson_creek"})."</option>\n";
+	$select .= "<option value=\"America/Denver\">".get_string($conf, {key => "tz_america/denver"})."</option>\n";
+	$select .= "<option value=\"America/Detroit\">".get_string($conf, {key => "tz_america/detroit"})."</option>\n";
+	$select .= "<option value=\"America/Dominica\">".get_string($conf, {key => "tz_america/dominica"})."</option>\n";
+	$select .= "<option value=\"America/Edmonton\">".get_string($conf, {key => "tz_america/edmonton"})."</option>\n";
+	$select .= "<option value=\"America/Eirunepe\">".get_string($conf, {key => "tz_america/eirunepe"})."</option>\n";
+	$select .= "<option value=\"America/El_Salvador\">".get_string($conf, {key => "tz_america/el_salvador"})."</option>\n";
+	$select .= "<option value=\"America/Ensenada\">".get_string($conf, {key => "tz_america/ensenada"})."</option>\n";
+	$select .= "<option value=\"America/Fort_Wayne\">".get_string($conf, {key => "tz_america/fort_wayne"})."</option>\n";
+	$select .= "<option value=\"America/Fortaleza\">".get_string($conf, {key => "tz_america/fortaleza"})."</option>\n";
+	$select .= "<option value=\"America/Glace_Bay\">".get_string($conf, {key => "tz_america/glace_bay"})."</option>\n";
+	$select .= "<option value=\"America/Godthab\">".get_string($conf, {key => "tz_america/godthab"})."</option>\n";
+	$select .= "<option value=\"America/Goose_Bay\">".get_string($conf, {key => "tz_america/goose_bay"})."</option>\n";
+	$select .= "<option value=\"America/Grand_Turk\">".get_string($conf, {key => "tz_america/grand_turk"})."</option>\n";
+	$select .= "<option value=\"America/Grenada\">".get_string($conf, {key => "tz_america/grenada"})."</option>\n";
+	$select .= "<option value=\"America/Guadeloupe\">".get_string($conf, {key => "tz_america/guadeloupe"})."</option>\n";
+	$select .= "<option value=\"America/Guatemala\">".get_string($conf, {key => "tz_america/guatemala"})."</option>\n";
+	$select .= "<option value=\"America/Guayaquil\">".get_string($conf, {key => "tz_america/guayaquil"})."</option>\n";
+	$select .= "<option value=\"America/Guyana\">".get_string($conf, {key => "tz_america/guyana"})."</option>\n";
+	$select .= "<option value=\"America/Halifax\">".get_string($conf, {key => "tz_america/halifax"})."</option>\n";
+	$select .= "<option value=\"America/Havana\">".get_string($conf, {key => "tz_america/havana"})."</option>\n";
+	$select .= "<option value=\"America/Hermosillo\">".get_string($conf, {key => "tz_america/hermosillo"})."</option>\n";
+	$select .= "<option value=\"America/Indiana/Indianapolis\">".get_string($conf, {key => "tz_america/indiana/indianapolis"})."</option>\n";
+	$select .= "<option value=\"America/Indiana/Knox\">".get_string($conf, {key => "tz_america/indiana/knox"})."</option>\n";
+	$select .= "<option value=\"America/Indiana/Marengo\">".get_string($conf, {key => "tz_america/indiana/marengo"})."</option>\n";
+	$select .= "<option value=\"America/Indiana/Petersburg\">".get_string($conf, {key => "tz_america/indiana/petersburg"})."</option>\n";
+	$select .= "<option value=\"America/Indiana/Tell_City\">".get_string($conf, {key => "tz_america/indiana/tell_city"})."</option>\n";
+	$select .= "<option value=\"America/Indiana/Vevay\">".get_string($conf, {key => "tz_america/indiana/vevay"})."</option>\n";
+	$select .= "<option value=\"America/Indiana/Vincennes\">".get_string($conf, {key => "tz_america/indiana/vincennes"})."</option>\n";
+	$select .= "<option value=\"America/Indiana/Winamac\">".get_string($conf, {key => "tz_america/indiana/winamac"})."</option>\n";
+	$select .= "<option value=\"America/Indianapolis\">".get_string($conf, {key => "tz_america/indianapolis"})."</option>\n";
+	$select .= "<option value=\"America/Inuvik\">".get_string($conf, {key => "tz_america/inuvik"})."</option>\n";
+	$select .= "<option value=\"America/Iqaluit\">".get_string($conf, {key => "tz_america/iqaluit"})."</option>\n";
+	$select .= "<option value=\"America/Jamaica\">".get_string($conf, {key => "tz_america/jamaica"})."</option>\n";
+	$select .= "<option value=\"America/Jujuy\">".get_string($conf, {key => "tz_america/jujuy"})."</option>\n";
+	$select .= "<option value=\"America/Juneau\">".get_string($conf, {key => "tz_america/juneau"})."</option>\n";
+	$select .= "<option value=\"America/Kentucky/Louisville\">".get_string($conf, {key => "tz_america/kentucky/louisville"})."</option>\n";
+	$select .= "<option value=\"America/Kentucky/Monticello\">".get_string($conf, {key => "tz_america/kentucky/monticello"})."</option>\n";
+	$select .= "<option value=\"America/Knox_IN\">".get_string($conf, {key => "tz_america/knox_in"})."</option>\n";
+	$select .= "<option value=\"America/Kralendijk\">".get_string($conf, {key => "tz_america/kralendijk"})."</option>\n";
+	$select .= "<option value=\"America/La_Paz\">".get_string($conf, {key => "tz_america/la_paz"})."</option>\n";
+	$select .= "<option value=\"America/Lima\">".get_string($conf, {key => "tz_america/lima"})."</option>\n";
+	$select .= "<option value=\"America/Los_Angeles\">".get_string($conf, {key => "tz_america/los_angeles"})."</option>\n";
+	$select .= "<option value=\"America/Louisville\">".get_string($conf, {key => "tz_america/louisville"})."</option>\n";
+	$select .= "<option value=\"America/Lower_Princes\">".get_string($conf, {key => "tz_america/lower_princes"})."</option>\n";
+	$select .= "<option value=\"America/Maceio\">".get_string($conf, {key => "tz_america/maceio"})."</option>\n";
+	$select .= "<option value=\"America/Managua\">".get_string($conf, {key => "tz_america/managua"})."</option>\n";
+	$select .= "<option value=\"America/Manaus\">".get_string($conf, {key => "tz_america/manaus"})."</option>\n";
+	$select .= "<option value=\"America/Marigot\">".get_string($conf, {key => "tz_america/marigot"})."</option>\n";
+	$select .= "<option value=\"America/Martinique\">".get_string($conf, {key => "tz_america/martinique"})."</option>\n";
+	$select .= "<option value=\"America/Matamoros\">".get_string($conf, {key => "tz_america/matamoros"})."</option>\n";
+	$select .= "<option value=\"America/Mazatlan\">".get_string($conf, {key => "tz_america/mazatlan"})."</option>\n";
+	$select .= "<option value=\"America/Mendoza\">".get_string($conf, {key => "tz_america/mendoza"})."</option>\n";
+	$select .= "<option value=\"America/Menominee\">".get_string($conf, {key => "tz_america/menominee"})."</option>\n";
+	$select .= "<option value=\"America/Merida\">".get_string($conf, {key => "tz_america/merida"})."</option>\n";
+	$select .= "<option value=\"America/Metlakatla\">".get_string($conf, {key => "tz_america/metlakatla"})."</option>\n";
+	$select .= "<option value=\"America/Mexico_City\">".get_string($conf, {key => "tz_america/mexico_city"})."</option>\n";
+	$select .= "<option value=\"America/Miquelon\">".get_string($conf, {key => "tz_america/miquelon"})."</option>\n";
+	$select .= "<option value=\"America/Moncton\">".get_string($conf, {key => "tz_america/moncton"})."</option>\n";
+	$select .= "<option value=\"America/Monterrey\">".get_string($conf, {key => "tz_america/monterrey"})."</option>\n";
+	$select .= "<option value=\"America/Montevideo\">".get_string($conf, {key => "tz_america/montevideo"})."</option>\n";
+	$select .= "<option value=\"America/Montreal\">".get_string($conf, {key => "tz_america/montreal"})."</option>\n";
+	$select .= "<option value=\"America/Montserrat\">".get_string($conf, {key => "tz_america/montserrat"})."</option>\n";
+	$select .= "<option value=\"America/Nassau\">".get_string($conf, {key => "tz_america/nassau"})."</option>\n";
+	$select .= "<option value=\"America/New_York\">".get_string($conf, {key => "tz_america/new_york"})."</option>\n";
+	$select .= "<option value=\"America/Nipigon\">".get_string($conf, {key => "tz_america/nipigon"})."</option>\n";
+	$select .= "<option value=\"America/Nome\">".get_string($conf, {key => "tz_america/nome"})."</option>\n";
+	$select .= "<option value=\"America/Noronha\">".get_string($conf, {key => "tz_america/noronha"})."</option>\n";
+	$select .= "<option value=\"America/North_Dakota/Beulah\">".get_string($conf, {key => "tz_america/north_dakota/beulah"})."</option>\n";
+	$select .= "<option value=\"America/North_Dakota/Center\">".get_string($conf, {key => "tz_america/north_dakota/center"})."</option>\n";
+	$select .= "<option value=\"America/North_Dakota/New_Salem\">".get_string($conf, {key => "tz_america/north_dakota/new_salem"})."</option>\n";
+	$select .= "<option value=\"America/Ojinaga\">".get_string($conf, {key => "tz_america/ojinaga"})."</option>\n";
+	$select .= "<option value=\"America/Panama\">".get_string($conf, {key => "tz_america/panama"})."</option>\n";
+	$select .= "<option value=\"America/Pangnirtung\">".get_string($conf, {key => "tz_america/pangnirtung"})."</option>\n";
+	$select .= "<option value=\"America/Paramaribo\">".get_string($conf, {key => "tz_america/paramaribo"})."</option>\n";
+	$select .= "<option value=\"America/Phoenix\">".get_string($conf, {key => "tz_america/phoenix"})."</option>\n";
+	$select .= "<option value=\"America/Port-au-Prince\">".get_string($conf, {key => "tz_america/port-au-prince"})."</option>\n";
+	$select .= "<option value=\"America/Port_of_Spain\">".get_string($conf, {key => "tz_america/port_of_spain"})."</option>\n";
+	$select .= "<option value=\"America/Porto_Acre\">".get_string($conf, {key => "tz_america/porto_acre"})."</option>\n";
+	$select .= "<option value=\"America/Porto_Velho\">".get_string($conf, {key => "tz_america/porto_velho"})."</option>\n";
+	$select .= "<option value=\"America/Puerto_Rico\">".get_string($conf, {key => "tz_america/puerto_rico"})."</option>\n";
+	$select .= "<option value=\"America/Rainy_River\">".get_string($conf, {key => "tz_america/rainy_river"})."</option>\n";
+	$select .= "<option value=\"America/Rankin_Inlet\">".get_string($conf, {key => "tz_america/rankin_inlet"})."</option>\n";
+	$select .= "<option value=\"America/Recife\">".get_string($conf, {key => "tz_america/recife"})."</option>\n";
+	$select .= "<option value=\"America/Regina\">".get_string($conf, {key => "tz_america/regina"})."</option>\n";
+	$select .= "<option value=\"America/Resolute\">".get_string($conf, {key => "tz_america/resolute"})."</option>\n";
+	$select .= "<option value=\"America/Rio_Branco\">".get_string($conf, {key => "tz_america/rio_branco"})."</option>\n";
+	$select .= "<option value=\"America/Rosario\">".get_string($conf, {key => "tz_america/rosario"})."</option>\n";
+	$select .= "<option value=\"America/Santa_Isabel\">".get_string($conf, {key => "tz_america/santa_isabel"})."</option>\n";
+	$select .= "<option value=\"America/Santarem\">".get_string($conf, {key => "tz_america/santarem"})."</option>\n";
+	$select .= "<option value=\"America/Santiago\">".get_string($conf, {key => "tz_america/santiago"})."</option>\n";
+	$select .= "<option value=\"America/Santo_Domingo\">".get_string($conf, {key => "tz_america/santo_domingo"})."</option>\n";
+	$select .= "<option value=\"America/Sao_Paulo\">".get_string($conf, {key => "tz_america/sao_paulo"})."</option>\n";
+	$select .= "<option value=\"America/Scoresbysund\">".get_string($conf, {key => "tz_america/scoresbysund"})."</option>\n";
+	$select .= "<option value=\"America/Shiprock\">".get_string($conf, {key => "tz_america/shiprock"})."</option>\n";
+	$select .= "<option value=\"America/Sitka\">".get_string($conf, {key => "tz_america/sitka"})."</option>\n";
+	$select .= "<option value=\"America/St_Barthelemy\">".get_string($conf, {key => "tz_america/st_barthelemy"})."</option>\n";
+	$select .= "<option value=\"America/St_Johns\">".get_string($conf, {key => "tz_america/st_johns"})."</option>\n";
+	$select .= "<option value=\"America/St_Kitts\">".get_string($conf, {key => "tz_america/st_kitts"})."</option>\n";
+	$select .= "<option value=\"America/St_Lucia\">".get_string($conf, {key => "tz_america/st_lucia"})."</option>\n";
+	$select .= "<option value=\"America/St_Thomas\">".get_string($conf, {key => "tz_america/st_thomas"})."</option>\n";
+	$select .= "<option value=\"America/St_Vincent\">".get_string($conf, {key => "tz_america/st_vincent"})."</option>\n";
+	$select .= "<option value=\"America/Swift_Current\">".get_string($conf, {key => "tz_america/swift_current"})."</option>\n";
+	$select .= "<option value=\"America/Tegucigalpa\">".get_string($conf, {key => "tz_america/tegucigalpa"})."</option>\n";
+	$select .= "<option value=\"America/Thule\">".get_string($conf, {key => "tz_america/thule"})."</option>\n";
+	$select .= "<option value=\"America/Thunder_Bay\">".get_string($conf, {key => "tz_america/thunder_bay"})."</option>\n";
+	$select .= "<option value=\"America/Tijuana\">".get_string($conf, {key => "tz_america/tijuana"})."</option>\n";
+	$select .= "<option value=\"America/Toronto\">".get_string($conf, {key => "tz_america/toronto"})."</option>\n";
+	$select .= "<option value=\"America/Tortola\">".get_string($conf, {key => "tz_america/tortola"})."</option>\n";
+	$select .= "<option value=\"America/Vancouver\">".get_string($conf, {key => "tz_america/vancouver"})."</option>\n";
+	$select .= "<option value=\"America/Virgin\">".get_string($conf, {key => "tz_america/virgin"})."</option>\n";
+	$select .= "<option value=\"America/Whitehorse\">".get_string($conf, {key => "tz_america/whitehorse"})."</option>\n";
+	$select .= "<option value=\"America/Winnipeg\">".get_string($conf, {key => "tz_america/winnipeg"})."</option>\n";
+	$select .= "<option value=\"America/Yakutat\">".get_string($conf, {key => "tz_america/yakutat"})."</option>\n";
+	$select .= "<option value=\"America/Yellowknife\">".get_string($conf, {key => "tz_america/yellowknife"})."</option>\n";
+	$select .= "<option value=\"Antarctica/Casey\">".get_string($conf, {key => "tz_antarctica/casey"})."</option>\n";
+	$select .= "<option value=\"Antarctica/Davis\">".get_string($conf, {key => "tz_antarctica/davis"})."</option>\n";
+	$select .= "<option value=\"Antarctica/DumontDUrville\">".get_string($conf, {key => "tz_antarctica/dumontdurville"})."</option>\n";
+	$select .= "<option value=\"Antarctica/Macquarie\">".get_string($conf, {key => "tz_antarctica/macquarie"})."</option>\n";
+	$select .= "<option value=\"Antarctica/Mawson\">".get_string($conf, {key => "tz_antarctica/mawson"})."</option>\n";
+	$select .= "<option value=\"Antarctica/McMurdo\">".get_string($conf, {key => "tz_antarctica/mcmurdo"})."</option>\n";
+	$select .= "<option value=\"Antarctica/Palmer\">".get_string($conf, {key => "tz_antarctica/palmer"})."</option>\n";
+	$select .= "<option value=\"Antarctica/Rothera\">".get_string($conf, {key => "tz_antarctica/rothera"})."</option>\n";
+	$select .= "<option value=\"Antarctica/South_Pole\">".get_string($conf, {key => "tz_antarctica/south_pole"})."</option>\n";
+	$select .= "<option value=\"Antarctica/Syowa\">".get_string($conf, {key => "tz_antarctica/syowa"})."</option>\n";
+	$select .= "<option value=\"Antarctica/Vostok\">".get_string($conf, {key => "tz_antarctica/vostok"})."</option>\n";
+	$select .= "<option value=\"Arctic/Longyearbyen\">".get_string($conf, {key => "tz_arctic/longyearbyen"})."</option>\n";
+	$select .= "<option value=\"Asia/Aden\">".get_string($conf, {key => "tz_asia/aden"})."</option>\n";
+	$select .= "<option value=\"Asia/Almaty\">".get_string($conf, {key => "tz_asia/almaty"})."</option>\n";
+	$select .= "<option value=\"Asia/Amman\">".get_string($conf, {key => "tz_asia/amman"})."</option>\n";
+	$select .= "<option value=\"Asia/Anadyr\">".get_string($conf, {key => "tz_asia/anadyr"})."</option>\n";
+	$select .= "<option value=\"Asia/Aqtau\">".get_string($conf, {key => "tz_asia/aqtau"})."</option>\n";
+	$select .= "<option value=\"Asia/Aqtobe\">".get_string($conf, {key => "tz_asia/aqtobe"})."</option>\n";
+	$select .= "<option value=\"Asia/Ashgabat\">".get_string($conf, {key => "tz_asia/ashgabat"})."</option>\n";
+	$select .= "<option value=\"Asia/Ashkhabad\">".get_string($conf, {key => "tz_asia/ashkhabad"})."</option>\n";
+	$select .= "<option value=\"Asia/Baghdad\">".get_string($conf, {key => "tz_asia/baghdad"})."</option>\n";
+	$select .= "<option value=\"Asia/Bahrain\">".get_string($conf, {key => "tz_asia/bahrain"})."</option>\n";
+	$select .= "<option value=\"Asia/Baku\">".get_string($conf, {key => "tz_asia/baku"})."</option>\n";
+	$select .= "<option value=\"Asia/Bangkok\">".get_string($conf, {key => "tz_asia/bangkok"})."</option>\n";
+	$select .= "<option value=\"Asia/Beirut\">".get_string($conf, {key => "tz_asia/beirut"})."</option>\n";
+	$select .= "<option value=\"Asia/Bishkek\">".get_string($conf, {key => "tz_asia/bishkek"})."</option>\n";
+	$select .= "<option value=\"Asia/Brunei\">".get_string($conf, {key => "tz_asia/brunei"})."</option>\n";
+	$select .= "<option value=\"Asia/Calcutta\">".get_string($conf, {key => "tz_asia/calcutta"})."</option>\n";
+	$select .= "<option value=\"Asia/Choibalsan\">".get_string($conf, {key => "tz_asia/choibalsan"})."</option>\n";
+	$select .= "<option value=\"Asia/Chongqing\">".get_string($conf, {key => "tz_asia/chongqing"})."</option>\n";
+	$select .= "<option value=\"Asia/Chungking\">".get_string($conf, {key => "tz_asia/chungking"})."</option>\n";
+	$select .= "<option value=\"Asia/Colombo\">".get_string($conf, {key => "tz_asia/colombo"})."</option>\n";
+	$select .= "<option value=\"Asia/Dacca\">".get_string($conf, {key => "tz_asia/dacca"})."</option>\n";
+	$select .= "<option value=\"Asia/Damascus\">".get_string($conf, {key => "tz_asia/damascus"})."</option>\n";
+	$select .= "<option value=\"Asia/Dhaka\">".get_string($conf, {key => "tz_asia/dhaka"})."</option>\n";
+	$select .= "<option value=\"Asia/Dili\">".get_string($conf, {key => "tz_asia/dili"})."</option>\n";
+	$select .= "<option value=\"Asia/Dubai\">".get_string($conf, {key => "tz_asia/dubai"})."</option>\n";
+	$select .= "<option value=\"Asia/Dushanbe\">".get_string($conf, {key => "tz_asia/dushanbe"})."</option>\n";
+	$select .= "<option value=\"Asia/Gaza\">".get_string($conf, {key => "tz_asia/gaza"})."</option>\n";
+	$select .= "<option value=\"Asia/Harbin\">".get_string($conf, {key => "tz_asia/harbin"})."</option>\n";
+	$select .= "<option value=\"Asia/Hebron\">".get_string($conf, {key => "tz_asia/hebron"})."</option>\n";
+	$select .= "<option value=\"Asia/Ho_Chi_Minh\">".get_string($conf, {key => "tz_asia/ho_chi_minh"})."</option>\n";
+	$select .= "<option value=\"Asia/Hong_Kong\">".get_string($conf, {key => "tz_asia/hong_kong"})."</option>\n";
+	$select .= "<option value=\"Asia/Hovd\">".get_string($conf, {key => "tz_asia/hovd"})."</option>\n";
+	$select .= "<option value=\"Asia/Irkutsk\">".get_string($conf, {key => "tz_asia/irkutsk"})."</option>\n";
+	$select .= "<option value=\"Asia/Istanbul\">".get_string($conf, {key => "tz_asia/istanbul"})."</option>\n";
+	$select .= "<option value=\"Asia/Jakarta\">".get_string($conf, {key => "tz_asia/jakarta"})."</option>\n";
+	$select .= "<option value=\"Asia/Jayapura\">".get_string($conf, {key => "tz_asia/jayapura"})."</option>\n";
+	$select .= "<option value=\"Asia/Jerusalem\">".get_string($conf, {key => "tz_asia/jerusalem"})."</option>\n";
+	$select .= "<option value=\"Asia/Kabul\">".get_string($conf, {key => "tz_asia/kabul"})."</option>\n";
+	$select .= "<option value=\"Asia/Kamchatka\">".get_string($conf, {key => "tz_asia/kamchatka"})."</option>\n";
+	$select .= "<option value=\"Asia/Karachi\">".get_string($conf, {key => "tz_asia/karachi"})."</option>\n";
+	$select .= "<option value=\"Asia/Kashgar\">".get_string($conf, {key => "tz_asia/kashgar"})."</option>\n";
+	$select .= "<option value=\"Asia/Kathmandu\">".get_string($conf, {key => "tz_asia/kathmandu"})."</option>\n";
+	$select .= "<option value=\"Asia/Katmandu\">".get_string($conf, {key => "tz_asia/katmandu"})."</option>\n";
+	$select .= "<option value=\"Asia/Khandyga\">".get_string($conf, {key => "tz_asia/khandyga"})."</option>\n";
+	$select .= "<option value=\"Asia/Kolkata\">".get_string($conf, {key => "tz_asia/kolkata"})."</option>\n";
+	$select .= "<option value=\"Asia/Krasnoyarsk\">".get_string($conf, {key => "tz_asia/krasnoyarsk"})."</option>\n";
+	$select .= "<option value=\"Asia/Kuala_Lumpur\">".get_string($conf, {key => "tz_asia/kuala_lumpur"})."</option>\n";
+	$select .= "<option value=\"Asia/Kuching\">".get_string($conf, {key => "tz_asia/kuching"})."</option>\n";
+	$select .= "<option value=\"Asia/Kuwait\">".get_string($conf, {key => "tz_asia/kuwait"})."</option>\n";
+	$select .= "<option value=\"Asia/Macao\">".get_string($conf, {key => "tz_asia/macao"})."</option>\n";
+	$select .= "<option value=\"Asia/Macau\">".get_string($conf, {key => "tz_asia/macau"})."</option>\n";
+	$select .= "<option value=\"Asia/Magadan\">".get_string($conf, {key => "tz_asia/magadan"})."</option>\n";
+	$select .= "<option value=\"Asia/Makassar\">".get_string($conf, {key => "tz_asia/makassar"})."</option>\n";
+	$select .= "<option value=\"Asia/Manila\">".get_string($conf, {key => "tz_asia/manila"})."</option>\n";
+	$select .= "<option value=\"Asia/Muscat\">".get_string($conf, {key => "tz_asia/muscat"})."</option>\n";
+	$select .= "<option value=\"Asia/Nicosia\">".get_string($conf, {key => "tz_asia/nicosia"})."</option>\n";
+	$select .= "<option value=\"Asia/Novokuznetsk\">".get_string($conf, {key => "tz_asia/novokuznetsk"})."</option>\n";
+	$select .= "<option value=\"Asia/Novosibirsk\">".get_string($conf, {key => "tz_asia/novosibirsk"})."</option>\n";
+	$select .= "<option value=\"Asia/Omsk\">".get_string($conf, {key => "tz_asia/omsk"})."</option>\n";
+	$select .= "<option value=\"Asia/Oral\">".get_string($conf, {key => "tz_asia/oral"})."</option>\n";
+	$select .= "<option value=\"Asia/Phnom_Penh\">".get_string($conf, {key => "tz_asia/phnom_penh"})."</option>\n";
+	$select .= "<option value=\"Asia/Pontianak\">".get_string($conf, {key => "tz_asia/pontianak"})."</option>\n";
+	$select .= "<option value=\"Asia/Pyongyang\">".get_string($conf, {key => "tz_asia/pyongyang"})."</option>\n";
+	$select .= "<option value=\"Asia/Qatar\">".get_string($conf, {key => "tz_asia/qatar"})."</option>\n";
+	$select .= "<option value=\"Asia/Qyzylorda\">".get_string($conf, {key => "tz_asia/qyzylorda"})."</option>\n";
+	$select .= "<option value=\"Asia/Rangoon\">".get_string($conf, {key => "tz_asia/rangoon"})."</option>\n";
+	$select .= "<option value=\"Asia/Riyadh\">".get_string($conf, {key => "tz_asia/riyadh"})."</option>\n";
+	$select .= "<option value=\"Asia/Riyadh87\">".get_string($conf, {key => "tz_asia/riyadh87"})."</option>\n";
+	$select .= "<option value=\"Asia/Riyadh88\">".get_string($conf, {key => "tz_asia/riyadh88"})."</option>\n";
+	$select .= "<option value=\"Asia/Riyadh89\">".get_string($conf, {key => "tz_asia/riyadh89"})."</option>\n";
+	$select .= "<option value=\"Asia/Saigon\">".get_string($conf, {key => "tz_asia/saigon"})."</option>\n";
+	$select .= "<option value=\"Asia/Sakhalin\">".get_string($conf, {key => "tz_asia/sakhalin"})."</option>\n";
+	$select .= "<option value=\"Asia/Samarkand\">".get_string($conf, {key => "tz_asia/samarkand"})."</option>\n";
+	$select .= "<option value=\"Asia/Seoul\">".get_string($conf, {key => "tz_asia/seoul"})."</option>\n";
+	$select .= "<option value=\"Asia/Shanghai\">".get_string($conf, {key => "tz_asia/shanghai"})."</option>\n";
+	$select .= "<option value=\"Asia/Singapore\">".get_string($conf, {key => "tz_asia/singapore"})."</option>\n";
+	$select .= "<option value=\"Asia/Taipei\">".get_string($conf, {key => "tz_asia/taipei"})."</option>\n";
+	$select .= "<option value=\"Asia/Tashkent\">".get_string($conf, {key => "tz_asia/tashkent"})."</option>\n";
+	$select .= "<option value=\"Asia/Tbilisi\">".get_string($conf, {key => "tz_asia/tbilisi"})."</option>\n";
+	$select .= "<option value=\"Asia/Tehran\">".get_string($conf, {key => "tz_asia/tehran"})."</option>\n";
+	$select .= "<option value=\"Asia/Tel_Aviv\">".get_string($conf, {key => "tz_asia/tel_aviv"})."</option>\n";
+	$select .= "<option value=\"Asia/Thimbu\">".get_string($conf, {key => "tz_asia/thimbu"})."</option>\n";
+	$select .= "<option value=\"Asia/Thimphu\">".get_string($conf, {key => "tz_asia/thimphu"})."</option>\n";
+	$select .= "<option value=\"Asia/Tokyo\">".get_string($conf, {key => "tz_asia/tokyo"})."</option>\n";
+	$select .= "<option value=\"Asia/Ujung_Pandang\">".get_string($conf, {key => "tz_asia/ujung_pandang"})."</option>\n";
+	$select .= "<option value=\"Asia/Ulaanbaatar\">".get_string($conf, {key => "tz_asia/ulaanbaatar"})."</option>\n";
+	$select .= "<option value=\"Asia/Ulan_Bator\">".get_string($conf, {key => "tz_asia/ulan_bator"})."</option>\n";
+	$select .= "<option value=\"Asia/Urumqi\">".get_string($conf, {key => "tz_asia/urumqi"})."</option>\n";
+	$select .= "<option value=\"Asia/Ust-Nera\">".get_string($conf, {key => "tz_asia/ust-nera"})."</option>\n";
+	$select .= "<option value=\"Asia/Vientiane\">".get_string($conf, {key => "tz_asia/vientiane"})."</option>\n";
+	$select .= "<option value=\"Asia/Vladivostok\">".get_string($conf, {key => "tz_asia/vladivostok"})."</option>\n";
+	$select .= "<option value=\"Asia/Yakutsk\">".get_string($conf, {key => "tz_asia/yakutsk"})."</option>\n";
+	$select .= "<option value=\"Asia/Yekaterinburg\">".get_string($conf, {key => "tz_asia/yekaterinburg"})."</option>\n";
+	$select .= "<option value=\"Asia/Yerevan\">".get_string($conf, {key => "tz_asia/yerevan"})."</option>\n";
+	$select .= "<option value=\"Atlantic/Azores\">".get_string($conf, {key => "tz_atlantic/azores"})."</option>\n";
+	$select .= "<option value=\"Atlantic/Bermuda\">".get_string($conf, {key => "tz_atlantic/bermuda"})."</option>\n";
+	$select .= "<option value=\"Atlantic/Canary\">".get_string($conf, {key => "tz_atlantic/canary"})."</option>\n";
+	$select .= "<option value=\"Atlantic/Cape_Verde\">".get_string($conf, {key => "tz_atlantic/cape_verde"})."</option>\n";
+	$select .= "<option value=\"Atlantic/Faeroe\">".get_string($conf, {key => "tz_atlantic/faeroe"})."</option>\n";
+	$select .= "<option value=\"Atlantic/Faroe\">".get_string($conf, {key => "tz_atlantic/faroe"})."</option>\n";
+	$select .= "<option value=\"Atlantic/Jan_Mayen\">".get_string($conf, {key => "tz_atlantic/jan_mayen"})."</option>\n";
+	$select .= "<option value=\"Atlantic/Madeira\">".get_string($conf, {key => "tz_atlantic/madeira"})."</option>\n";
+	$select .= "<option value=\"Atlantic/Reykjavik\">".get_string($conf, {key => "tz_atlantic/reykjavik"})."</option>\n";
+	$select .= "<option value=\"Atlantic/South_Georgia\">".get_string($conf, {key => "tz_atlantic/south_georgia"})."</option>\n";
+	$select .= "<option value=\"Atlantic/St_Helena\">".get_string($conf, {key => "tz_atlantic/st_helena"})."</option>\n";
+	$select .= "<option value=\"Atlantic/Stanley\">".get_string($conf, {key => "tz_atlantic/stanley"})."</option>\n";
+	$select .= "<option value=\"Australia/ACT\">".get_string($conf, {key => "tz_australia/act"})."</option>\n";
+	$select .= "<option value=\"Australia/Adelaide\">".get_string($conf, {key => "tz_australia/adelaide"})."</option>\n";
+	$select .= "<option value=\"Australia/Brisbane\">".get_string($conf, {key => "tz_australia/brisbane"})."</option>\n";
+	$select .= "<option value=\"Australia/Broken_Hill\">".get_string($conf, {key => "tz_australia/broken_hill"})."</option>\n";
+	$select .= "<option value=\"Australia/Canberra\">".get_string($conf, {key => "tz_australia/canberra"})."</option>\n";
+	$select .= "<option value=\"Australia/Currie\">".get_string($conf, {key => "tz_australia/currie"})."</option>\n";
+	$select .= "<option value=\"Australia/Darwin\">".get_string($conf, {key => "tz_australia/darwin"})."</option>\n";
+	$select .= "<option value=\"Australia/Eucla\">".get_string($conf, {key => "tz_australia/eucla"})."</option>\n";
+	$select .= "<option value=\"Australia/Hobart\">".get_string($conf, {key => "tz_australia/hobart"})."</option>\n";
+	$select .= "<option value=\"Australia/LHI\">".get_string($conf, {key => "tz_australia/lhi"})."</option>\n";
+	$select .= "<option value=\"Australia/Lindeman\">".get_string($conf, {key => "tz_australia/lindeman"})."</option>\n";
+	$select .= "<option value=\"Australia/Lord_Howe\">".get_string($conf, {key => "tz_australia/lord_howe"})."</option>\n";
+	$select .= "<option value=\"Australia/Melbourne\">".get_string($conf, {key => "tz_australia/melbourne"})."</option>\n";
+	$select .= "<option value=\"Australia/NSW\">".get_string($conf, {key => "tz_australia/nsw"})."</option>\n";
+	$select .= "<option value=\"Australia/North\">".get_string($conf, {key => "tz_australia/north"})."</option>\n";
+	$select .= "<option value=\"Australia/Perth\">".get_string($conf, {key => "tz_australia/perth"})."</option>\n";
+	$select .= "<option value=\"Australia/Queensland\">".get_string($conf, {key => "tz_australia/queensland"})."</option>\n";
+	$select .= "<option value=\"Australia/South\">".get_string($conf, {key => "tz_australia/south"})."</option>\n";
+	$select .= "<option value=\"Australia/Sydney\">".get_string($conf, {key => "tz_australia/sydney"})."</option>\n";
+	$select .= "<option value=\"Australia/Tasmania\">".get_string($conf, {key => "tz_australia/tasmania"})."</option>\n";
+	$select .= "<option value=\"Australia/Victoria\">".get_string($conf, {key => "tz_australia/victoria"})."</option>\n";
+	$select .= "<option value=\"Australia/West\">".get_string($conf, {key => "tz_australia/west"})."</option>\n";
+	$select .= "<option value=\"Australia/Yancowinna\">".get_string($conf, {key => "tz_australia/yancowinna"})."</option>\n";
+	$select .= "<option value=\"Brazil/Acre\">".get_string($conf, {key => "tz_brazil/acre"})."</option>\n";
+	$select .= "<option value=\"Brazil/DeNoronha\">".get_string($conf, {key => "tz_brazil/denoronha"})."</option>\n";
+	$select .= "<option value=\"Brazil/East\">".get_string($conf, {key => "tz_brazil/east"})."</option>\n";
+	$select .= "<option value=\"Brazil/West\">".get_string($conf, {key => "tz_brazil/west"})."</option>\n";
+	$select .= "<option value=\"CET\">".get_string($conf, {key => "tz_cet"})."</option>\n";
+	$select .= "<option value=\"Canada/Atlantic\">".get_string($conf, {key => "tz_canada/atlantic"})."</option>\n";
+	$select .= "<option value=\"Canada/Central\">".get_string($conf, {key => "tz_canada/central"})."</option>\n";
+	$select .= "<option value=\"Canada/East-Saskatchewan\">".get_string($conf, {key => "tz_canada/east-saskatchewan"})."</option>\n";
+	$select .= "<option value=\"Canada/Eastern\">".get_string($conf, {key => "tz_canada/eastern"})."</option>\n";
+	$select .= "<option value=\"Canada/Mountain\">".get_string($conf, {key => "tz_canada/mountain"})."</option>\n";
+	$select .= "<option value=\"Canada/Newfoundland\">".get_string($conf, {key => "tz_canada/newfoundland"})."</option>\n";
+	$select .= "<option value=\"Canada/Pacific\">".get_string($conf, {key => "tz_canada/pacific"})."</option>\n";
+	$select .= "<option value=\"Canada/Saskatchewan\">".get_string($conf, {key => "tz_canada/saskatchewan"})."</option>\n";
+	$select .= "<option value=\"Canada/Yukon\">".get_string($conf, {key => "tz_canada/yukon"})."</option>\n";
+	$select .= "<option value=\"Chile/Continental\">".get_string($conf, {key => "tz_chile/continental"})."</option>\n";
+	$select .= "<option value=\"Chile/EasterIsland\">".get_string($conf, {key => "tz_chile/easterisland"})."</option>\n";
+	$select .= "<option value=\"Cuba\">".get_string($conf, {key => "tz_cuba"})."</option>\n";
+	$select .= "<option value=\"EET\">".get_string($conf, {key => "tz_eet"})."</option>\n";
+	$select .= "<option value=\"EST\">".get_string($conf, {key => "tz_est"})."</option>\n";
+	$select .= "<option value=\"Egypt\">".get_string($conf, {key => "tz_egypt"})."</option>\n";
+	$select .= "<option value=\"Eire\">".get_string($conf, {key => "tz_eire"})."</option>\n";
+	$select .= "<option value=\"Etc/GMT\">".get_string($conf, {key => "tz_etc/gmt"})."</option>\n";
+	$select .= "<option value=\"Etc/GMT+0\">".get_string($conf, {key => "tz_etc/gmt+0"})."</option>\n";
+	$select .= "<option value=\"Etc/GMT+1\">".get_string($conf, {key => "tz_etc/gmt+1"})."</option>\n";
+	$select .= "<option value=\"Etc/GMT+10\">".get_string($conf, {key => "tz_etc/gmt+10"})."</option>\n";
+	$select .= "<option value=\"Etc/GMT+11\">".get_string($conf, {key => "tz_etc/gmt+11"})."</option>\n";
+	$select .= "<option value=\"Etc/GMT+12\">".get_string($conf, {key => "tz_etc/gmt+12"})."</option>\n";
+	$select .= "<option value=\"Etc/GMT+2\">".get_string($conf, {key => "tz_etc/gmt+2"})."</option>\n";
+	$select .= "<option value=\"Etc/GMT+3\">".get_string($conf, {key => "tz_etc/gmt+3"})."</option>\n";
+	$select .= "<option value=\"Etc/GMT+4\">".get_string($conf, {key => "tz_etc/gmt+4"})."</option>\n";
+	$select .= "<option value=\"Etc/GMT+5\">".get_string($conf, {key => "tz_etc/gmt+5"})."</option>\n";
+	$select .= "<option value=\"Etc/GMT+6\">".get_string($conf, {key => "tz_etc/gmt+6"})."</option>\n";
+	$select .= "<option value=\"Etc/GMT+7\">".get_string($conf, {key => "tz_etc/gmt+7"})."</option>\n";
+	$select .= "<option value=\"Etc/GMT+8\">".get_string($conf, {key => "tz_etc/gmt+8"})."</option>\n";
+	$select .= "<option value=\"Etc/GMT+9\">".get_string($conf, {key => "tz_etc/gmt+9"})."</option>\n";
+	$select .= "<option value=\"Etc/GMT-0\">".get_string($conf, {key => "tz_etc/gmt-0"})."</option>\n";
+	$select .= "<option value=\"Etc/GMT-1\">".get_string($conf, {key => "tz_etc/gmt-1"})."</option>\n";
+	$select .= "<option value=\"Etc/GMT-10\">".get_string($conf, {key => "tz_etc/gmt-10"})."</option>\n";
+	$select .= "<option value=\"Etc/GMT-11\">".get_string($conf, {key => "tz_etc/gmt-11"})."</option>\n";
+	$select .= "<option value=\"Etc/GMT-12\">".get_string($conf, {key => "tz_etc/gmt-12"})."</option>\n";
+	$select .= "<option value=\"Etc/GMT-13\">".get_string($conf, {key => "tz_etc/gmt-13"})."</option>\n";
+	$select .= "<option value=\"Etc/GMT-14\">".get_string($conf, {key => "tz_etc/gmt-14"})."</option>\n";
+	$select .= "<option value=\"Etc/GMT-2\">".get_string($conf, {key => "tz_etc/gmt-2"})."</option>\n";
+	$select .= "<option value=\"Etc/GMT-3\">".get_string($conf, {key => "tz_etc/gmt-3"})."</option>\n";
+	$select .= "<option value=\"Etc/GMT-4\">".get_string($conf, {key => "tz_etc/gmt-4"})."</option>\n";
+	$select .= "<option value=\"Etc/GMT-5\">".get_string($conf, {key => "tz_etc/gmt-5"})."</option>\n";
+	$select .= "<option value=\"Etc/GMT-6\">".get_string($conf, {key => "tz_etc/gmt-6"})."</option>\n";
+	$select .= "<option value=\"Etc/GMT-7\">".get_string($conf, {key => "tz_etc/gmt-7"})."</option>\n";
+	$select .= "<option value=\"Etc/GMT-8\">".get_string($conf, {key => "tz_etc/gmt-8"})."</option>\n";
+	$select .= "<option value=\"Etc/GMT-9\">".get_string($conf, {key => "tz_etc/gmt-9"})."</option>\n";
+	$select .= "<option value=\"Etc/GMT0\">".get_string($conf, {key => "tz_etc/gmt0"})."</option>\n";
+	$select .= "<option value=\"Etc/Greenwich\">".get_string($conf, {key => "tz_etc/greenwich"})."</option>\n";
+	$select .= "<option value=\"Etc/UCT\">".get_string($conf, {key => "tz_etc/uct"})."</option>\n";
+	$select .= "<option value=\"Etc/UTC\">".get_string($conf, {key => "tz_etc/utc"})."</option>\n";
+	$select .= "<option value=\"Etc/Universal\">".get_string($conf, {key => "tz_etc/universal"})."</option>\n";
+	$select .= "<option value=\"Etc/Zulu\">".get_string($conf, {key => "tz_etc/zulu"})."</option>\n";
+	$select .= "<option value=\"Europe/Amsterdam\">".get_string($conf, {key => "tz_europe/amsterdam"})."</option>\n";
+	$select .= "<option value=\"Europe/Andorra\">".get_string($conf, {key => "tz_europe/andorra"})."</option>\n";
+	$select .= "<option value=\"Europe/Athens\">".get_string($conf, {key => "tz_europe/athens"})."</option>\n";
+	$select .= "<option value=\"Europe/Belfast\">".get_string($conf, {key => "tz_europe/belfast"})."</option>\n";
+	$select .= "<option value=\"Europe/Belgrade\">".get_string($conf, {key => "tz_europe/belgrade"})."</option>\n";
+	$select .= "<option value=\"Europe/Berlin\">".get_string($conf, {key => "tz_europe/berlin"})."</option>\n";
+	$select .= "<option value=\"Europe/Bratislava\">".get_string($conf, {key => "tz_europe/bratislava"})."</option>\n";
+	$select .= "<option value=\"Europe/Brussels\">".get_string($conf, {key => "tz_europe/brussels"})."</option>\n";
+	$select .= "<option value=\"Europe/Bucharest\">".get_string($conf, {key => "tz_europe/bucharest"})."</option>\n";
+	$select .= "<option value=\"Europe/Budapest\">".get_string($conf, {key => "tz_europe/budapest"})."</option>\n";
+	$select .= "<option value=\"Europe/Busingen\">".get_string($conf, {key => "tz_europe/busingen"})."</option>\n";
+	$select .= "<option value=\"Europe/Chisinau\">".get_string($conf, {key => "tz_europe/chisinau"})."</option>\n";
+	$select .= "<option value=\"Europe/Copenhagen\">".get_string($conf, {key => "tz_europe/copenhagen"})."</option>\n";
+	$select .= "<option value=\"Europe/Dublin\">".get_string($conf, {key => "tz_europe/dublin"})."</option>\n";
+	$select .= "<option value=\"Europe/Gibraltar\">".get_string($conf, {key => "tz_europe/gibraltar"})."</option>\n";
+	$select .= "<option value=\"Europe/Guernsey\">".get_string($conf, {key => "tz_europe/guernsey"})."</option>\n";
+	$select .= "<option value=\"Europe/Helsinki\">".get_string($conf, {key => "tz_europe/helsinki"})."</option>\n";
+	$select .= "<option value=\"Europe/Isle_of_Man\">".get_string($conf, {key => "tz_europe/isle_of_man"})."</option>\n";
+	$select .= "<option value=\"Europe/Istanbul\">".get_string($conf, {key => "tz_europe/istanbul"})."</option>\n";
+	$select .= "<option value=\"Europe/Jersey\">".get_string($conf, {key => "tz_europe/jersey"})."</option>\n";
+	$select .= "<option value=\"Europe/Kaliningrad\">".get_string($conf, {key => "tz_europe/kaliningrad"})."</option>\n";
+	$select .= "<option value=\"Europe/Kiev\">".get_string($conf, {key => "tz_europe/kiev"})."</option>\n";
+	$select .= "<option value=\"Europe/Lisbon\">".get_string($conf, {key => "tz_europe/lisbon"})."</option>\n";
+	$select .= "<option value=\"Europe/Ljubljana\">".get_string($conf, {key => "tz_europe/ljubljana"})."</option>\n";
+	$select .= "<option value=\"Europe/London\">".get_string($conf, {key => "tz_europe/london"})."</option>\n";
+	$select .= "<option value=\"Europe/Luxembourg\">".get_string($conf, {key => "tz_europe/luxembourg"})."</option>\n";
+	$select .= "<option value=\"Europe/Madrid\">".get_string($conf, {key => "tz_europe/madrid"})."</option>\n";
+	$select .= "<option value=\"Europe/Malta\">".get_string($conf, {key => "tz_europe/malta"})."</option>\n";
+	$select .= "<option value=\"Europe/Mariehamn\">".get_string($conf, {key => "tz_europe/mariehamn"})."</option>\n";
+	$select .= "<option value=\"Europe/Minsk\">".get_string($conf, {key => "tz_europe/minsk"})."</option>\n";
+	$select .= "<option value=\"Europe/Monaco\">".get_string($conf, {key => "tz_europe/monaco"})."</option>\n";
+	$select .= "<option value=\"Europe/Moscow\">".get_string($conf, {key => "tz_europe/moscow"})."</option>\n";
+	$select .= "<option value=\"Europe/Nicosia\">".get_string($conf, {key => "tz_europe/nicosia"})."</option>\n";
+	$select .= "<option value=\"Europe/Oslo\">".get_string($conf, {key => "tz_europe/oslo"})."</option>\n";
+	$select .= "<option value=\"Europe/Paris\">".get_string($conf, {key => "tz_europe/paris"})."</option>\n";
+	$select .= "<option value=\"Europe/Podgorica\">".get_string($conf, {key => "tz_europe/podgorica"})."</option>\n";
+	$select .= "<option value=\"Europe/Prague\">".get_string($conf, {key => "tz_europe/prague"})."</option>\n";
+	$select .= "<option value=\"Europe/Riga\">".get_string($conf, {key => "tz_europe/riga"})."</option>\n";
+	$select .= "<option value=\"Europe/Rome\">".get_string($conf, {key => "tz_europe/rome"})."</option>\n";
+	$select .= "<option value=\"Europe/Samara\">".get_string($conf, {key => "tz_europe/samara"})."</option>\n";
+	$select .= "<option value=\"Europe/San_Marino\">".get_string($conf, {key => "tz_europe/san_marino"})."</option>\n";
+	$select .= "<option value=\"Europe/Sarajevo\">".get_string($conf, {key => "tz_europe/sarajevo"})."</option>\n";
+	$select .= "<option value=\"Europe/Simferopol\">".get_string($conf, {key => "tz_europe/simferopol"})."</option>\n";
+	$select .= "<option value=\"Europe/Skopje\">".get_string($conf, {key => "tz_europe/skopje"})."</option>\n";
+	$select .= "<option value=\"Europe/Sofia\">".get_string($conf, {key => "tz_europe/sofia"})."</option>\n";
+	$select .= "<option value=\"Europe/Stockholm\">".get_string($conf, {key => "tz_europe/stockholm"})."</option>\n";
+	$select .= "<option value=\"Europe/Tallinn\">".get_string($conf, {key => "tz_europe/tallinn"})."</option>\n";
+	$select .= "<option value=\"Europe/Tirane\">".get_string($conf, {key => "tz_europe/tirane"})."</option>\n";
+	$select .= "<option value=\"Europe/Tiraspol\">".get_string($conf, {key => "tz_europe/tiraspol"})."</option>\n";
+	$select .= "<option value=\"Europe/Uzhgorod\">".get_string($conf, {key => "tz_europe/uzhgorod"})."</option>\n";
+	$select .= "<option value=\"Europe/Vaduz\">".get_string($conf, {key => "tz_europe/vaduz"})."</option>\n";
+	$select .= "<option value=\"Europe/Vatican\">".get_string($conf, {key => "tz_europe/vatican"})."</option>\n";
+	$select .= "<option value=\"Europe/Vienna\">".get_string($conf, {key => "tz_europe/vienna"})."</option>\n";
+	$select .= "<option value=\"Europe/Vilnius\">".get_string($conf, {key => "tz_europe/vilnius"})."</option>\n";
+	$select .= "<option value=\"Europe/Volgograd\">".get_string($conf, {key => "tz_europe/volgograd"})."</option>\n";
+	$select .= "<option value=\"Europe/Warsaw\">".get_string($conf, {key => "tz_europe/warsaw"})."</option>\n";
+	$select .= "<option value=\"Europe/Zagreb\">".get_string($conf, {key => "tz_europe/zagreb"})."</option>\n";
+	$select .= "<option value=\"Europe/Zaporozhye\">".get_string($conf, {key => "tz_europe/zaporozhye"})."</option>\n";
+	$select .= "<option value=\"Europe/Zurich\">".get_string($conf, {key => "tz_europe/zurich"})."</option>\n";
+	$select .= "<option value=\"GB\">".get_string($conf, {key => "tz_gb"})."</option>\n";
+	$select .= "<option value=\"GB-Eire\">".get_string($conf, {key => "tz_gb-eire"})."</option>\n";
+	$select .= "<option value=\"GMT\">".get_string($conf, {key => "tz_gmt"})."</option>\n";
+	$select .= "<option value=\"GMT+0\">".get_string($conf, {key => "tz_gmt+0"})."</option>\n";
+	$select .= "<option value=\"GMT-0\">".get_string($conf, {key => "tz_gmt-0"})."</option>\n";
+	$select .= "<option value=\"GMT0\">".get_string($conf, {key => "tz_gmt0"})."</option>\n";
+	$select .= "<option value=\"Greenwich\">".get_string($conf, {key => "tz_greenwich"})."</option>\n";
+	$select .= "<option value=\"HST\">".get_string($conf, {key => "tz_hst"})."</option>\n";
+	$select .= "<option value=\"Hongkong\">".get_string($conf, {key => "tz_hongkong"})."</option>\n";
+	$select .= "<option value=\"Iceland\">".get_string($conf, {key => "tz_iceland"})."</option>\n";
+	$select .= "<option value=\"Indian/Antananarivo\">".get_string($conf, {key => "tz_indian/antananarivo"})."</option>\n";
+	$select .= "<option value=\"Indian/Chagos\">".get_string($conf, {key => "tz_indian/chagos"})."</option>\n";
+	$select .= "<option value=\"Indian/Christmas\">".get_string($conf, {key => "tz_indian/christmas"})."</option>\n";
+	$select .= "<option value=\"Indian/Cocos\">".get_string($conf, {key => "tz_indian/cocos"})."</option>\n";
+	$select .= "<option value=\"Indian/Comoro\">".get_string($conf, {key => "tz_indian/comoro"})."</option>\n";
+	$select .= "<option value=\"Indian/Kerguelen\">".get_string($conf, {key => "tz_indian/kerguelen"})."</option>\n";
+	$select .= "<option value=\"Indian/Mahe\">".get_string($conf, {key => "tz_indian/mahe"})."</option>\n";
+	$select .= "<option value=\"Indian/Maldives\">".get_string($conf, {key => "tz_indian/maldives"})."</option>\n";
+	$select .= "<option value=\"Indian/Mauritius\">".get_string($conf, {key => "tz_indian/mauritius"})."</option>\n";
+	$select .= "<option value=\"Indian/Mayotte\">".get_string($conf, {key => "tz_indian/mayotte"})."</option>\n";
+	$select .= "<option value=\"Indian/Reunion\">".get_string($conf, {key => "tz_indian/reunion"})."</option>\n";
+	$select .= "<option value=\"Iran\">".get_string($conf, {key => "tz_iran"})."</option>\n";
+	$select .= "<option value=\"Israel\">".get_string($conf, {key => "tz_israel"})."</option>\n";
+	$select .= "<option value=\"Jamaica\">".get_string($conf, {key => "tz_jamaica"})."</option>\n";
+	$select .= "<option value=\"Japan\">".get_string($conf, {key => "tz_japan"})."</option>\n";
+	$select .= "<option value=\"Kwajalein\">".get_string($conf, {key => "tz_kwajalein"})."</option>\n";
+	$select .= "<option value=\"Libya\">".get_string($conf, {key => "tz_libya"})."</option>\n";
+	$select .= "<option value=\"MET\">".get_string($conf, {key => "tz_met"})."</option>\n";
+	$select .= "<option value=\"MST\">".get_string($conf, {key => "tz_mst"})."</option>\n";
+	$select .= "<option value=\"Mexico/BajaNorte\">".get_string($conf, {key => "tz_mexico/bajanorte"})."</option>\n";
+	$select .= "<option value=\"Mexico/BajaSur\">".get_string($conf, {key => "tz_mexico/bajasur"})."</option>\n";
+	$select .= "<option value=\"Mexico/General\">".get_string($conf, {key => "tz_mexico/general"})."</option>\n";
+	$select .= "<option value=\"Mideast/Riyadh87\">".get_string($conf, {key => "tz_mideast/riyadh87"})."</option>\n";
+	$select .= "<option value=\"Mideast/Riyadh88\">".get_string($conf, {key => "tz_mideast/riyadh88"})."</option>\n";
+	$select .= "<option value=\"Mideast/Riyadh89\">".get_string($conf, {key => "tz_mideast/riyadh89"})."</option>\n";
+	$select .= "<option value=\"NZ\">".get_string($conf, {key => "tz_nz"})."</option>\n";
+	$select .= "<option value=\"NZ-CHAT\">".get_string($conf, {key => "tz_nz-chat"})."</option>\n";
+	$select .= "<option value=\"Navajo\">".get_string($conf, {key => "tz_navajo"})."</option>\n";
+	$select .= "<option value=\"PRC\">".get_string($conf, {key => "tz_prc"})."</option>\n";
+	$select .= "<option value=\"Pacific/Apia\">".get_string($conf, {key => "tz_pacific/apia"})."</option>\n";
+	$select .= "<option value=\"Pacific/Auckland\">".get_string($conf, {key => "tz_pacific/auckland"})."</option>\n";
+	$select .= "<option value=\"Pacific/Chatham\">".get_string($conf, {key => "tz_pacific/chatham"})."</option>\n";
+	$select .= "<option value=\"Pacific/Chuuk\">".get_string($conf, {key => "tz_pacific/chuuk"})."</option>\n";
+	$select .= "<option value=\"Pacific/Easter\">".get_string($conf, {key => "tz_pacific/easter"})."</option>\n";
+	$select .= "<option value=\"Pacific/Efate\">".get_string($conf, {key => "tz_pacific/efate"})."</option>\n";
+	$select .= "<option value=\"Pacific/Enderbury\">".get_string($conf, {key => "tz_pacific/enderbury"})."</option>\n";
+	$select .= "<option value=\"Pacific/Fakaofo\">".get_string($conf, {key => "tz_pacific/fakaofo"})."</option>\n";
+	$select .= "<option value=\"Pacific/Fiji\">".get_string($conf, {key => "tz_pacific/fiji"})."</option>\n";
+	$select .= "<option value=\"Pacific/Funafuti\">".get_string($conf, {key => "tz_pacific/funafuti"})."</option>\n";
+	$select .= "<option value=\"Pacific/Galapagos\">".get_string($conf, {key => "tz_pacific/galapagos"})."</option>\n";
+	$select .= "<option value=\"Pacific/Gambier\">".get_string($conf, {key => "tz_pacific/gambier"})."</option>\n";
+	$select .= "<option value=\"Pacific/Guadalcanal\">".get_string($conf, {key => "tz_pacific/guadalcanal"})."</option>\n";
+	$select .= "<option value=\"Pacific/Guam\">".get_string($conf, {key => "tz_pacific/guam"})."</option>\n";
+	$select .= "<option value=\"Pacific/Honolulu\">".get_string($conf, {key => "tz_pacific/honolulu"})."</option>\n";
+	$select .= "<option value=\"Pacific/Johnston\">".get_string($conf, {key => "tz_pacific/johnston"})."</option>\n";
+	$select .= "<option value=\"Pacific/Kiritimati\">".get_string($conf, {key => "tz_pacific/kiritimati"})."</option>\n";
+	$select .= "<option value=\"Pacific/Kosrae\">".get_string($conf, {key => "tz_pacific/kosrae"})."</option>\n";
+	$select .= "<option value=\"Pacific/Kwajalein\">".get_string($conf, {key => "tz_pacific/kwajalein"})."</option>\n";
+	$select .= "<option value=\"Pacific/Majuro\">".get_string($conf, {key => "tz_pacific/majuro"})."</option>\n";
+	$select .= "<option value=\"Pacific/Marquesas\">".get_string($conf, {key => "tz_pacific/marquesas"})."</option>\n";
+	$select .= "<option value=\"Pacific/Midway\">".get_string($conf, {key => "tz_pacific/midway"})."</option>\n";
+	$select .= "<option value=\"Pacific/Nauru\">".get_string($conf, {key => "tz_pacific/nauru"})."</option>\n";
+	$select .= "<option value=\"Pacific/Niue\">".get_string($conf, {key => "tz_pacific/niue"})."</option>\n";
+	$select .= "<option value=\"Pacific/Norfolk\">".get_string($conf, {key => "tz_pacific/norfolk"})."</option>\n";
+	$select .= "<option value=\"Pacific/Noumea\">".get_string($conf, {key => "tz_pacific/noumea"})."</option>\n";
+	$select .= "<option value=\"Pacific/Pago_Pago\">".get_string($conf, {key => "tz_pacific/pago_pago"})."</option>\n";
+	$select .= "<option value=\"Pacific/Palau\">".get_string($conf, {key => "tz_pacific/palau"})."</option>\n";
+	$select .= "<option value=\"Pacific/Pitcairn\">".get_string($conf, {key => "tz_pacific/pitcairn"})."</option>\n";
+	$select .= "<option value=\"Pacific/Pohnpei\">".get_string($conf, {key => "tz_pacific/pohnpei"})."</option>\n";
+	$select .= "<option value=\"Pacific/Ponape\">".get_string($conf, {key => "tz_pacific/ponape"})."</option>\n";
+	$select .= "<option value=\"Pacific/Port_Moresby\">".get_string($conf, {key => "tz_pacific/port_moresby"})."</option>\n";
+	$select .= "<option value=\"Pacific/Rarotonga\">".get_string($conf, {key => "tz_pacific/rarotonga"})."</option>\n";
+	$select .= "<option value=\"Pacific/Saipan\">".get_string($conf, {key => "tz_pacific/saipan"})."</option>\n";
+	$select .= "<option value=\"Pacific/Samoa\">".get_string($conf, {key => "tz_pacific/samoa"})."</option>\n";
+	$select .= "<option value=\"Pacific/Tahiti\">".get_string($conf, {key => "tz_pacific/tahiti"})."</option>\n";
+	$select .= "<option value=\"Pacific/Tarawa\">".get_string($conf, {key => "tz_pacific/tarawa"})."</option>\n";
+	$select .= "<option value=\"Pacific/Tongatapu\">".get_string($conf, {key => "tz_pacific/tongatapu"})."</option>\n";
+	$select .= "<option value=\"Pacific/Truk\">".get_string($conf, {key => "tz_pacific/truk"})."</option>\n";
+	$select .= "<option value=\"Pacific/Wake\">".get_string($conf, {key => "tz_pacific/wake"})."</option>\n";
+	$select .= "<option value=\"Pacific/Wallis\">".get_string($conf, {key => "tz_pacific/wallis"})."</option>\n";
+	$select .= "<option value=\"Pacific/Yap\">".get_string($conf, {key => "tz_pacific/yap"})."</option>\n";
+	$select .= "<option value=\"Poland\">".get_string($conf, {key => "tz_poland"})."</option>\n";
+	$select .= "<option value=\"Portugal\">".get_string($conf, {key => "tz_portugal"})."</option>\n";
+	$select .= "<option value=\"ROC\">".get_string($conf, {key => "tz_roc"})."</option>\n";
+	$select .= "<option value=\"ROK\">".get_string($conf, {key => "tz_rok"})."</option>\n";
+	$select .= "<option value=\"Singapore\">".get_string($conf, {key => "tz_singapore"})."</option>\n";
+	$select .= "<option value=\"Turkey\">".get_string($conf, {key => "tz_turkey"})."</option>\n";
+	$select .= "<option value=\"UCT\">".get_string($conf, {key => "tz_uct"})."</option>\n";
+	$select .= "<option value=\"US/Alaska\">".get_string($conf, {key => "tz_us/alaska"})."</option>\n";
+	$select .= "<option value=\"US/Aleutian\">".get_string($conf, {key => "tz_us/aleutian"})."</option>\n";
+	$select .= "<option value=\"US/Arizona\">".get_string($conf, {key => "tz_us/arizona"})."</option>\n";
+	$select .= "<option value=\"US/Central\">".get_string($conf, {key => "tz_us/central"})."</option>\n";
+	$select .= "<option value=\"US/East-Indiana\">".get_string($conf, {key => "tz_us/east-indiana"})."</option>\n";
+	$select .= "<option value=\"US/Eastern\">".get_string($conf, {key => "tz_us/eastern"})."</option>\n";
+	$select .= "<option value=\"US/Hawaii\">".get_string($conf, {key => "tz_us/hawaii"})."</option>\n";
+	$select .= "<option value=\"US/Indiana-Starke\">".get_string($conf, {key => "tz_us/indiana-starke"})."</option>\n";
+	$select .= "<option value=\"US/Michigan\">".get_string($conf, {key => "tz_us/michigan"})."</option>\n";
+	$select .= "<option value=\"US/Mountain\">".get_string($conf, {key => "tz_us/mountain"})."</option>\n";
+	$select .= "<option value=\"US/Pacific\">".get_string($conf, {key => "tz_us/pacific"})."</option>\n";
+	$select .= "<option value=\"US/Pacific-New\">".get_string($conf, {key => "tz_us/pacific-new"})."</option>\n";
+	$select .= "<option value=\"US/Samoa\">".get_string($conf, {key => "tz_us/samoa"})."</option>\n";
+	$select .= "<option value=\"UTC\">".get_string($conf, {key => "tz_utc"})."</option>\n";
+	$select .= "<option value=\"Universal\">".get_string($conf, {key => "tz_universal"})."</option>\n";
+	$select .= "<option value=\"W-SU\">".get_string($conf, {key => "tz_w-su"})."</option>\n";
+	$select .= "<option value=\"WET\">".get_string($conf, {key => "tz_wet"})."</option>\n";
+	$select .= "<option value=\"Zulu\">".get_string($conf, {key => "tz_zulu"})."</option>\n";
+	$select .= "</select>\n";
+	
+	# Select the appropriate option, if any.
+	if ($selected_option)
+	{
+		$select =~ s/value="$selected_option">/value="$selected_option" selected>/s;
+	}
+	
+	return($select);
+}
 
 # This builds an HTML '<select ...>...</select>' drop-down list.
 sub build_html_select
@@ -42,7 +664,7 @@ sub build_html_select
 	foreach my $option (@{$options})
 	{
 		my ($option_value, $option_name) = split /,/, $option, 2;
-		$select .= "<option name=\"$option_value\">$option_name</option>\n";
+		$select .= "<option value=\"$option_value\">$option_name</option>\n";
 	}
 	
 	# Select the appropriate option, if any.
@@ -84,6 +706,234 @@ sub call_gather_system_info
 	return(0);
 }
 
+# This gathers up the information about the network interfaces on the system.
+# It returns a form for inserting into a larger form.
+sub gather_network_interface_info
+{	
+	my ($conf, $caller) = @_;
+	record($conf, {line => __LINE__, file => $THIS_FILE, level => 1, message => "-> gather_network_interface_info(); caller: [$caller]\n"});
+	
+	# Now set the CGI variables to the read system values if the CGI
+	# variables are empty.
+	my $hash_reference = $conf->{interface};
+	if ($caller eq "initial")
+	{
+		$conf->{cgi}{interfaces} = "";
+	}
+	else
+	{
+		record($conf, {line => __LINE__, file => $THIS_FILE, level => 4, message => "cgi::interfaces: [$conf->{cgi}{interfaces}]\n"});
+		$hash_reference = {};
+		foreach my $interface (split /,/, $conf->{cgi}{interfaces})
+		{
+			$hash_reference->{$interface} = 1;
+			record($conf, {line => __LINE__, file => $THIS_FILE, level => 4, message => "interface: [$interface] -> [$hash_reference->{$interface}]\n"});
+		}
+	}
+	
+	my $nic_replace          = "";
+	my $i                    = 1;
+	foreach my $interface (sort {$a cmp $b} keys %{$hash_reference})
+	{
+		record($conf, {line => __LINE__, file => $THIS_FILE, level => 1, message => "interface: [$interface]\n"});
+		#print "<pre>DEBUG $THIS_FILE ".__LINE__."; interface: [$interface]</pre>\n";
+		if ($caller eq "initial")
+		{
+			$conf->{cgi}{interfaces} .= "$interface,";
+		}
+		my $ip_key         = "${interface}_ip";
+		my $subnet_key     = "${interface}_subnet";
+		my $gateway_key    = "${interface}_gateway";
+		my $dns1_key       = "${interface}_dns1";
+		my $dns2_key       = "${interface}_dns2";
+		my $defroute_key   = "${interface}_defroute";
+		my $bootproto_key  = "${interface}_bootproto";
+		my $interface_name = "${interface}_name";
+		my $mtu            = "${interface}_mtu";
+		#print "<pre>DEBUG $THIS_FILE ".__LINE__."; interface_name: [$interface_name], mtu: [$mtu]</pre>\n";
+		
+		# These are just displayed, not set via CGI
+		my $link_up_key        = "${interface}_link_up";
+		my $duplex_key         = "${interface}_duplex";
+		my $mac_key            = "${interface}_mac";
+		my $speed_key          = "${interface}_speed";
+		my $max_speed_key      = "${interface}_max_speed";
+		my $max_duplex_key     = "${interface}_max_duplex";
+		my $vendor_key         = "${interface}_vendor";
+		my $interface_name_key = "${interface}_interface_name";
+		my $mtu_key            = "${interface}_mtu";
+		#print "<pre>DEBUG $THIS_FILE ".__LINE__."; interface_name_key: [$interface_name_key], mtu_key: [$mtu_key]</pre>\n";
+		
+		# Read in the CGI variables.
+		get_cgi_vars($conf, [
+			"$ip_key",
+			"$subnet_key",
+			"$gateway_key",
+			"$dns1_key",
+			"$dns2_key",
+			"$defroute_key",
+			"$bootproto_key",
+			"$interface_name",
+			"$mtu",
+		]);
+		$conf->{cgi}{$ip_key}             = $conf->{interface}{$interface}{ip}        if not $conf->{cgi}{$ip_key};
+		$conf->{cgi}{$subnet_key}         = $conf->{interface}{$interface}{subnet}    if not $conf->{cgi}{$subnet_key};
+		$conf->{cgi}{$gateway_key}        = $conf->{interface}{$interface}{gateway}   if not $conf->{cgi}{$gateway_key};
+		$conf->{cgi}{$dns1_key}           = $conf->{interface}{$interface}{dns1}      if not $conf->{cgi}{$dns1_key};
+		$conf->{cgi}{$dns2_key}           = $conf->{interface}{$interface}{dns2}      if not $conf->{cgi}{$dns2_key};
+		$conf->{cgi}{$defroute_key}       = $conf->{interface}{$interface}{defroute}  if not $conf->{cgi}{$defroute_key};
+		$conf->{cgi}{$bootproto_key}      = $conf->{interface}{$interface}{bootproto} if not $conf->{cgi}{$bootproto_key};
+		$conf->{cgi}{$interface_name_key} = $interface                                if not $conf->{cgi}{$interface_name_key};
+		$conf->{cgi}{$mtu_key}            = $conf->{interface}{$interface}{mtu}       if not $conf->{cgi}{$mtu_key};
+		record($conf, {line => __LINE__, file => $THIS_FILE, level => 1, message => "cgi::${ip_key}: [cgi::${ip_key}]\n"});
+		record($conf, {line => __LINE__, file => $THIS_FILE, level => 1, message => "cgi::${subnet_key}: [cgi::${subnet_key}]\n"});
+		record($conf, {line => __LINE__, file => $THIS_FILE, level => 1, message => "cgi::${gateway_key}: [cgi::${gateway_key}]\n"});
+		record($conf, {line => __LINE__, file => $THIS_FILE, level => 1, message => "cgi::${dns1_key}: [cgi::${dns1_key}]\n"});
+		record($conf, {line => __LINE__, file => $THIS_FILE, level => 1, message => "cgi::${dns2_key}: [cgi::${dns2_key}]\n"});
+		record($conf, {line => __LINE__, file => $THIS_FILE, level => 1, message => "cgi::${defroute_key}: [cgi::${defroute_key}]\n"});
+		record($conf, {line => __LINE__, file => $THIS_FILE, level => 1, message => "cgi::${bootproto_key}: [cgi::${bootproto_key}]\n"});
+		record($conf, {line => __LINE__, file => $THIS_FILE, level => 1, message => "cgi::${interface_name_key}: [cgi::${interface_name_key}]\n"});
+		record($conf, {line => __LINE__, file => $THIS_FILE, level => 1, message => "cgi::${mtu_key}: [cgi::${mtu_key}]\n"});
+		
+		# Always set by what was read. Using 'cgi' for convenience's
+		# sake.
+		my $say_state      = "";
+		my $say_duplex     = "";
+		my $say_max_duplex = "";
+		my $say_speed      = "";
+		my $say_max_speed  = "";
+		if ($caller eq "initial")
+		{
+			$conf->{cgi}{$link_up_key}    = $conf->{interface}{$interface}{link_up};
+			$conf->{cgi}{$duplex_key}     = $conf->{interface}{$interface}{duplex};
+			$conf->{cgi}{$mac_key}        = $conf->{interface}{$interface}{mac};
+			$conf->{cgi}{$speed_key}      = $conf->{interface}{$interface}{speed};
+			$conf->{cgi}{$max_speed_key}  = $conf->{interface}{$interface}{max_speed};
+			$conf->{cgi}{$max_duplex_key} = $conf->{interface}{$interface}{max_duplex};
+			$conf->{cgi}{$vendor_key}     = "?";
+			#print "Link: [$conf->{interface}{$interface}{link_up}], duplex: [$conf->{interface}{$interface}{duplex}], mac: [$conf->{interface}{$interface}{mac}], speed: [$conf->{interface}{$interface}{speed}], max_speed: [$conf->{interface}{$interface}{max_speed}]<br />\n";
+		
+			# If I have a MAC address, get the vendor.
+			if ($conf->{cgi}{$mac_key})
+			{
+				$conf->{cgi}{$vendor_key} = translate_mac_to_vendor($conf, $conf->{cgi}{$mac_key});
+			}
+			
+			# Build the form entry for this interface
+			if ($conf->{cgi}{$duplex_key} eq "?")
+			{
+				$say_duplex = get_string($conf, {key => "generic_0014", variables => {}});
+			}
+			else
+			{
+				$say_duplex = $conf->{cgi}{$duplex_key} ? "#!string!generic_0008!#" : "#!string!generic_0009!#"; # 8 == full, 9 == half
+			}
+			if ($conf->{cgi}{$max_duplex_key} eq "?")
+			{
+				$say_max_duplex = get_string($conf, {key => "generic_0014", variables => {}});
+			}
+			else
+			{
+				$say_max_duplex = $conf->{cgi}{$max_duplex_key} ? "#!string!generic_0008!#" : "#!string!generic_0009!#"; # 8 == full, 9 == half
+			}
+			if ($conf->{cgi}{$speed_key} eq "?")
+			{
+				$say_speed = get_string($conf, {key => "generic_0013", variables => {}});
+			}
+			else
+			{
+				$say_speed = $conf->{cgi}{$speed_key};
+			}
+			if ($conf->{cgi}{$max_speed_key} eq "?")
+			{
+				$say_max_speed = get_string($conf, {key => "generic_0010", variables => {}});
+			}
+			else
+			{
+				$say_max_speed = $conf->{cgi}{$max_speed_key};
+			}
+
+			if ($conf->{cgi}{$link_up_key})
+			{
+				# Link is up
+				$say_state = get_string($conf, {key => 'install_0012', variables => {
+					link_status		=>	"#!string!generic_0006!#",
+					link_speed		=>	$say_speed,
+					link_duplex		=>	$say_duplex,
+					link_max_speed		=>	$say_max_speed,
+					link_max_duplex		=>	$say_max_duplex,
+				}});
+			}
+			else
+			{
+				# Link is down
+				$say_state = get_string($conf, {key => 'install_0013', variables => {
+					link_status		=>	"#!string!generic_0006!#",
+					link_speed		=>	$say_speed,
+					link_duplex		=>	$say_duplex,
+					link_max_speed		=>	$say_max_speed,
+					link_max_duplex		=>	$say_max_duplex,
+				}});
+			}
+		}
+		my $dg_selected = "";
+		if (($conf->{cgi}{defroute}) && ($conf->{cgi}{defroute} eq $interface))
+		{
+			$dg_selected = "checked";
+		}
+		elsif ((not $conf->{cgi}{defroute}) && ($i == 1))
+		{
+			$dg_selected = "checked";
+		}
+		
+		# Swap some variables
+		$conf->{cgi}{$ip_key}      = "" if $conf->{cgi}{$ip_key}      eq "?";
+		$conf->{cgi}{$subnet_key}  = "" if $conf->{cgi}{$subnet_key}  eq "?";
+		$conf->{cgi}{$gateway_key} = "" if $conf->{cgi}{$gateway_key} eq "?";
+		$conf->{cgi}{$dns1_key}    = "" if $conf->{cgi}{$dns1_key}    eq "?";
+		$conf->{cgi}{$dns2_key}    = "" if $conf->{cgi}{$dns2_key}    eq "?";
+		
+		if ($caller eq "summarize")
+		{
+			if ($interface ne $conf->{cgi}{$interface_name_key})
+			{
+				$interface = "$interface -> $conf->{cgi}{$interface_name_key}";
+			}
+		}
+		
+		my $say_mac_string = get_string($conf, {key => 'install_0014', variables => {mac_address => $conf->{cgi}{$mac_key}}});
+		my $variables = {};
+		my $replace   = {
+			interface_number	=>	$i,
+			interface		=>	$interface,
+			interface_name_variable	=>	$interface_name_key,
+			interface_name_value	=>	$conf->{cgi}{$interface_name_key},
+			mtu_variable		=>	$mtu_key,
+			mtu_value		=>	$conf->{cgi}{$mtu_key},
+			dg_selected		=>	$dg_selected,
+			'state'			=>	$say_state,
+			mac_string		=>	$say_mac_string,
+			vendor			=>	$conf->{cgi}{$vendor_key},
+			ip_variable		=>	"$ip_key",
+			ip_value		=>	$conf->{cgi}{$ip_key},
+			subnet_variable		=>	"$subnet_key",
+			subnet_value		=>	$conf->{cgi}{$subnet_key},
+			gateway_variable	=>	"$gateway_key",
+			gateway_value		=>	$conf->{cgi}{$gateway_key},
+			dns1_variable		=>	"$dns1_key",
+			dns1_value		=>	$conf->{cgi}{$dns1_key},
+			dns2_variable		=>	"$dns2_key",
+			dns2_value		=>	$conf->{cgi}{$dns2_key},
+		};
+		my $template = $caller eq "initial" ? "nic_form" : "nic_summarize";
+		$nic_replace .= template($conf, "install", "$template", $variables, $replace);
+		$i++;
+	}
+	$conf->{cgi}{interfaces} =~ s/,$//;
+	
+	return($nic_replace);
+}
+
 # The reads in any passed CGI variables
 sub get_cgi_vars
 {
@@ -93,7 +943,14 @@ sub get_cgi_vars
 	my $cgi = new CGI;
 	
 	# This will store the string I was passed.
-	$conf->{sys}{cgi_string} = "?";
+	if ($conf->{sys}{cgi_string})
+	{
+		$conf->{sys}{cgi_string} .= "&";
+	}
+	else
+	{
+		$conf->{sys}{cgi_string} =  "?";
+	}
 	foreach my $var (@{$vars})
 	{
 		# A stray comma will cause a loop with no var name
@@ -118,7 +975,7 @@ sub get_cgi_vars
 			if ($var eq "file")
 			{
 				$conf->{cgi_fh}{$var} = $cgi->upload($var);
-				print "$THIS_FILE ".__LINE__."; cgi FH: [$var] -> [$conf->{cgi_fh}{$var}]\n";
+				record($conf, {line => __LINE__, file => $THIS_FILE, level => 1, message => "cgi FH: [$var] -> [$conf->{cgi_fh}{$var}]\n"});
 			}
 			$conf->{cgi}{$var} = $cgi->param($var);
 			
@@ -129,12 +986,248 @@ sub get_cgi_vars
 			}
 			$conf->{sys}{cgi_string} .= "$var=$conf->{cgi}{$var}&";
 		}
-		#print "$THIS_FILE ".__LINE__."; var: [$var] -> [$conf->{cgi}{$var}]\n" if $conf->{cgi}{$var};
+		record($conf, {line => __LINE__, file => $THIS_FILE, level => 1, message => "cgi::$var: [$conf->{cgi}{$var}]\n",}) if $conf->{cgi}{$var};
 	}
 	$conf->{sys}{cgi_string} =~ s/&$//;
-	#print "$THIS_FILE ".__LINE__."; system::cgi_string: [$conf->{sys}{cgi_string}]\n";
+	record($conf, {line => __LINE__, file => $THIS_FILE, level => 1, message => "system::cgi_string: [$conf->{sys}{cgi_string}]\n"}) if $conf->{sys}{cgi_string} ne "?";
 	
 	return (0);
+}
+
+# This simply sorts out the current directory the program is running in.
+sub get_current_directory
+{
+	my ($conf) = @_;
+	
+	my $current_dir = "/var/www/html/";
+	if ($ENV{DOCUMENT_ROOT})
+	{
+		$current_dir = $ENV{DOCUMENT_ROOT};
+	}
+	elsif ($ENV{CONTEXT_DOCUMENT_ROOT})
+	{
+		$current_dir = $ENV{CONTEXT_DOCUMENT_ROOT};
+	}
+	elsif ($ENV{PWD})
+	{
+		$current_dir = $ENV{PWD};
+	}
+	
+	return($current_dir);
+}
+
+# This returns the date and time based on the given unix-time.
+sub get_date_and_time
+{
+	my ($conf, $variables) = @_;
+	
+	# Set default values then check for passed parameters to over-write
+	# them with.
+	my $offset          = $variables->{offset}          ? $variables->{offset}          : 0;
+	my $use_time        = $variables->{use_time}        ? $variables->{use_time}        : time;
+	my $require_weekday = $variables->{require_weekday} ? $variables->{require_weekday} : 0;
+	my $skip_weekends   = $variables->{skip_weekends}   ? $variables->{skip_weekends}   : 0;
+	my $use_24h         = $variables->{use_24h}         ? $variables->{use_24h}         : $conf->{sys}{use_24h};
+	
+	# Do my initial calculation.
+	my %time          = ();
+	my $adjusted_time = $use_time + $offset;
+	($time{sec}, $time{min}, $time{hour}, $time{mday}, $time{mon}, $time{year}, $time{wday}, $time{yday}, $time{isdst}) = localtime($adjusted_time);
+
+	# If I am set to skip weekends and I land on a weekend, simply add 48
+	# hours. This is useful when you need to move X-weekdays.
+	if (($skip_weekends) && ($offset))
+	{
+		# First thing I need to know is how many weekends pass between
+		# now and the requested date. So to start, how many days are we
+		# talking about?
+		my $difference   = 0;			# Hold the accumulated days in seconds.
+		my $local_offset = $offset;		# Local offset I can mess with.
+		my $day          = 24 * 60 * 60;	# For clarity.
+		my $week         = $day * 7;		# For clarity.
+		
+		# As I proceed, 'local_time' will be subtracted as I account
+		# for time and 'difference' will increase to account for known
+		# weekend days.
+		if ($local_offset =~ /^-/)
+		{
+			### Go back in time...
+			$local_offset =~ s/^-//;
+			
+			# First, how many seconds have passed today?
+			my $seconds_passed_today = $time{sec} + ($time{min} * 60) + ($time{hour} * 60 * 60);
+			
+			# Now, get the number of seconds in the offset beyond
+			# an even day. This is compared to the seconds passed
+			# in this day. If greater, I count an extra day.
+			my $local_offset_second_over_day =  $local_offset % $day;
+			$local_offset                    -= $local_offset_second_over_day;
+			my $local_offset_days            =  $local_offset / $day;
+			$local_offset_days++ if $local_offset_second_over_day > $seconds_passed_today;
+			
+			# If the number of days is greater than one week, add
+			# two days to the 'difference' for every seven days and
+			# reduce 'local_offset_days' to the number of days
+			# beyond the given number of weeks.
+			my $local_offset_remaining_days = $local_offset_days;
+			if ($local_offset_days > 7)
+			{
+				# Greater than a week, do the math.
+				$local_offset_remaining_days =  $local_offset_days % 7;
+				$local_offset_days           -= $local_offset_remaining_days;
+				my $weeks_passed             =  $local_offset_days / 7;
+				$difference                  += ($weeks_passed * (2 * $day));
+			}
+			
+			# If I am currently in a weekend, add two days.
+			if (($time{wday} == 6) || ($time{wday} == 0))
+			{
+				$difference += (2 * $day);
+			}
+			else
+			{
+				# Compare 'local_offset_remaining_days' to
+				# today's day. If greater, I've passed a
+				# weekend and need to add two days to
+				# 'difference'.
+				my $today_day = (localtime())[6];
+				if ($local_offset_remaining_days > $today_day)
+				{
+					$difference+=(2 * $day);
+				}
+			}
+			
+			# If I have a difference, recalculate the offset date.
+			if ($difference)
+			{
+				my $new_offset = ($offset - $difference);
+				$adjusted_time = ($use_time + $new_offset);
+				($time{sec}, $time{min}, $time{hour}, $time{mday}, $time{mon}, $time{year}, $time{wday}, $time{yday}, $time{isdst}) = localtime($adjusted_time);
+			}
+		}
+		else
+		{
+			### Go forward in time...
+			# First, how many seconds are left in today?
+			my $left_hours            = 23 - $time{hour};
+			my $left_minutes          = 59 - $time{min};
+			my $left_seconds          = 59 - $time{sec};
+			my $seconds_left_in_today = $left_seconds + ($left_minutes * 60) + ($left_hours * 60 * 60);
+			
+			# Now, get the number of seconds in the offset beyond
+			# an even day. This is compared to the seconds left in
+			# this day. If greater, I count an extra day.
+			my $local_offset_second_over_day =  $local_offset % $day;
+			$local_offset                    -= $local_offset_second_over_day;
+			my $local_offset_days            =  $local_offset / $day;
+			$local_offset_days++ if $local_offset_second_over_day > $seconds_left_in_today;
+			
+			# If the number of days is greater than one week, add
+			# two days to the 'difference' for every seven days and
+			# reduce 'local_offset_days' to the number of days
+			# beyond the given number of weeks.
+			my $local_offset_remaining_days = $local_offset_days;
+			if ($local_offset_days > 7)
+			{
+				# Greater than a week, do the math.
+				$local_offset_remaining_days =  $local_offset_days % 7;
+				$local_offset_days           -= $local_offset_remaining_days;
+				my $weeks_passed             =  $local_offset_days / 7;
+				$difference                  += ($weeks_passed * (2 * $day));
+			}
+			
+			# If I am currently in a weekend, add two days.
+			if (($time{wday} == 6) || ($time{wday} == 0))
+			{
+				$difference += (2 * $day);
+			}
+			else
+			{
+				# Compare 'local_offset_remaining_days' to
+				# 5 minus today's day to get the number of days
+				# until the weekend. If greater, I've crossed a
+				# weekend and need to add two days to
+				# 'difference'.
+				my $today_day       = (localtime())[6];
+				my $days_to_weekend = 5 - $today_day;
+				if ($local_offset_remaining_days > $days_to_weekend)
+				{
+					$difference += (2 * $day);
+				}
+			}
+			
+			# If I have a difference, recalculate the offset date.
+			if ($difference)
+			{
+				my $new_offset = ($offset + $difference);
+				$adjusted_time = ($use_time + $new_offset);
+				($time{sec}, $time{min}, $time{hour}, $time{mday}, $time{mon}, $time{year}, $time{wday}, $time{yday}, $time{isdst}) = localtime($adjusted_time);
+			}
+		}
+	}
+
+	# If the 'require_weekday' is set and if 'time{wday}' is 0 (Sunday) or
+	# 6 (Saturday), set or increase the offset by 24 or 48 hours.
+	if (($require_weekday) && (($time{wday} == 0) || ($time{wday} == 6)))
+	{
+		# The resulting day is a weekend and the require weekday was
+		# set.
+		$adjusted_time = $use_time + ($offset + (24 * 60 * 60));
+		($time{sec}, $time{min}, $time{hour}, $time{mday}, $time{mon}, $time{year}, $time{wday}, $time{yday}, $time{isdst}) = localtime($adjusted_time);
+		
+		# I don't check for the date and adjust automatically because I
+		# don't know if I am going forward or backwards in the calander.
+		if (($time{wday} == 0) || ($time{wday} == 6))
+		{
+			# Am I still ending on a weekday?
+			$adjusted_time = $use_time + ($offset + (48 * 60 * 60));
+			($time{sec}, $time{min}, $time{hour}, $time{mday}, $time{mon}, $time{year}, $time{wday}, $time{yday}, $time{isdst}) = localtime($adjusted_time);
+		}
+	}
+
+	# Increment the month by one.
+	$time{mon}++;
+	
+	# Parse the 12/24h time components.
+	if ($use_24h)
+	{
+		# 24h time.
+		$time{pad_hour} = sprintf("%02d", $time{hour});
+		$time{suffix}   = "";
+	}
+	else
+	{
+		# 12h am/pm time.
+		if ( $time{hour} == 0 )
+		{
+			$time{pad_hour} = 12;
+			$time{suffix}   = " am";
+		}
+		elsif ( $time{hour} < 12 )
+		{
+			$time{pad_hour} = $time{hour};
+			$time{suffix}   = " am";
+		}
+		else
+		{
+			$time{pad_hour} = ($time{hour}-12);
+			$time{suffix}   = " pm";
+		}
+		$time{pad_hour} = sprintf("%02d", $time{pad_hour});
+	}
+	
+	# Now parse the global components.
+	$time{pad_min}  = sprintf("%02d", $time{min});
+	$time{pad_sec}  = sprintf("%02d", $time{sec});
+	$time{year}     = ($time{year} + 1900);
+	$time{pad_mon}  = sprintf("%02d", $time{mon});
+	$time{pad_mday} = sprintf("%02d", $time{mday});
+	$time{mon}++;
+	
+	my $date = $time{year}.$conf->{sys}{date_seperator}.$time{pad_mon}.$conf->{sys}{date_seperator}.$time{pad_mday};
+	my $time = $time{pad_hour}.$conf->{sys}{time_seperator}.$time{pad_min}.$conf->{sys}{time_seperator}.$time{pad_sec}.$time{suffix};
+	
+	return($date, $time);
 }
 
 # This pulls out all of the configured languages from the 'strings.xml' file
@@ -158,11 +1251,11 @@ sub get_languages
 # language.
 sub get_string
 {
-	my ($conf, $parameters) = @_;
+	my ($conf, $vars) = @_;
 	
-	my $key       = $parameters->{key};
-	my $language  = $parameters->{language}  ? $parameters->{language}  : $conf->{sys}{language};
-	my $variables = $parameters->{variables} ? $parameters->{variables} : "";
+	my $key       = $vars->{key};
+	my $language  = $vars->{language}  ? $vars->{language}  : $conf->{sys}{language};
+	my $variables = $vars->{variables} ? $vars->{variables} : "";
 	
 	if (not $key)
 	{
@@ -176,6 +1269,11 @@ sub get_string
 	{
 		hard_die($conf, $THIS_FILE, __LINE__, 4, "The language key: [$language] does not exist in the 'strings.xml' file.\n");
 	}
+	my $say_language = $language;
+	if ($conf->{string}{lang}{$language}{lang}{long_name})
+	{
+		$say_language = "$language ($conf->{string}{lang}{$language}{lang}{long_name})";
+	}
 	if (($variables) && (ref($variables) ne "HASH"))
 	{
 		hard_die($conf, $THIS_FILE, __LINE__, 5, "The 'variables' string passed into common.lib's 'get_string()' function is not a hash reference. The string's data is: [$variables].\n");
@@ -183,20 +1281,23 @@ sub get_string
 	
 	if (not exists $conf->{string}{lang}{$language}{key}{$key}{content})
 	{
-		hard_die($conf, $THIS_FILE, __LINE__, 6, "The 'string' generated by common.lib's 'get_string()' function is undefined. This passed string key: [$key] may not exist in the 'strings.xml' file.\n");
+		hard_die($conf, $THIS_FILE, __LINE__, 6, "The 'string' generated by common.lib's 'get_string()' function is undefined. This passed string key: [$key] for the language: [$say_language] may not exist in the 'strings.xml' file.\n");
 	}
 	
 	# Grab the string and start cleaning it up.
 	my $string = $conf->{string}{lang}{$language}{key}{$key}{content};
+	#print __LINE__."; >> string: [$string]\n";
 	
 	# This clears off the new-line and trailing white-spaces caused by the
 	# indenting of the '</key>' field in the words XML file when printing
 	# to the command line.
 	$string =~ s/^\n//;
 	$string =~ s/\n(\s+)$//;
+	#print __LINE__."; == string: [$string]\n";
 	
 	# Process all the #!...!# escape variables.
 	($string) = process_string($conf, $string, $variables);
+	#print __LINE__."; << string: [$string]\n";
 	
 	#print "$THIS_FILE ".__LINE__."; key: [$key], language: [$language]\n";
 	return($string);
@@ -223,10 +1324,62 @@ sub hard_die
 	exit ($exit_code);
 }
 
-# This is run when the host system has not been configured. When done, it will
-# create the configuration file. The existance of that file prevents this from
-# running again.
+# Summarize the user's form data and ask them to confirm.
+sub summarize_initial_configuration
+{
+	my ($conf, $caller) = @_;
+	
+	record($conf, {line => __LINE__, file => $THIS_FILE, level => 4, message => "caller: [$caller]\n"});
+	if ($caller eq "striker")
+	{
+		summarize_initial_striker_configuration($conf);
+	}
+	elsif ($caller eq "monitor")
+	{
+		summarize_initial_monitor_configuration($conf);
+	}
+	
+	return(0);
+}
+
+# If the configuration file does not yet exist, it will trigger the initial
+# installation of the system.
 sub initial_configuration
+{
+	my ($conf, $caller) = @_;
+	
+	if ($caller eq "striker")
+	{
+		# Read any install-specific CGI variables.
+		get_cgi_vars($conf, [
+			"config_name",
+			"language",
+			"system_name",
+			"interfaces",
+			"defroute",
+			"striker_user",
+			"striker_password",
+			"striker_db_name",
+			"striker_db_user",
+			"striker_db_password",
+			"org_name",
+			"summary",
+		]);
+		
+		initial_striker_configuration($conf);
+	}
+	elsif ($caller eq "monitor")
+	{
+		initial_monitor_configuration($conf);
+	}
+	
+	return(0);
+}
+
+# This is run when the host system is determined to be a 'striker' dashboard 
+# and has not been configured. When done, it will create the configuration 
+# file. The existance of that file prevents this from running again.
+sub initial_monitor_configuration
 {
 	my ($conf) = @_;
 	
@@ -241,176 +1394,106 @@ sub initial_configuration
 		attributes	=>	"onselect='null()'",
 	});
 	
-	# Read any install-specific CGI variables.
-	get_cgi_vars($conf, [
-		"config_name",
-		"language",
-		"system_name",
-		"interfaces",
-		"defroute",
-	]);
+	$conf->{cgi}{db_name}     = $conf->{db}{name}     if not $conf->{cgi}{db_name};
+	$conf->{cgi}{db_user}     = $conf->{db}{user}     if not $conf->{cgi}{db_user};
+	$conf->{cgi}{db_password} = $conf->{db}{password} if not $conf->{cgi}{db_password};
 	
-	# Call the 'gather-system-info' tool
-	call_gather_system_info($conf);
+	# This collects the network interface information
+	#my ($nic_replace) = gather_network_interface_info($conf);
+	### TODO: Make this configure a node's full network stack
+	my $nic_replace = "";
 	
-	# Now set the CGI variables to the read system values if the CGI
-	# variables are empty.
-	$conf->{cgi}{interfaces} = "";
-	my $nic_replace          = "";
-	my $i                    = 1;
-	foreach my $interface (sort {$a cmp $b} keys %{$conf->{interface}})
-	{
-		$conf->{cgi}{interfaces} .= "$interface,";
-		my $ip_key        = "${interface}_ip";
-		my $subnet_key    = "${interface}_subnet";
-		my $gateway_key   = "${interface}_gateway";
-		my $dns1_key      = "${interface}_dns1";
-		my $dns2_key      = "${interface}_dns2";
-		my $defroute_key  = "${interface}_defroute";
-		my $bootproto_key = "${interface}_bootproto";
-		
-		# These are just displayed, not set via CGI
-		my $link_up_key    = "${interface}_link_up";
-		my $duplex_key     = "${interface}_duplex";
-		my $mac_key        = "${interface}_mac";
-		my $speed_key      = "${interface}_speed";
-		my $max_speed_key  = "${interface}_max_speed";
-		my $max_duplex_key = "${interface}_max_duplex";
-		my $vendor_key     = "${interface}_vendor";
-		
-		# Read in the CGI variables.
-		get_cgi_vars($conf, [
-			"$ip_key",
-			"$subnet_key",
-			"$gateway_key",
-			"$dns1_key",
-			"$dns2_key",
-			"$defroute_key",
-			"$bootproto_key",
-		]);
-		$conf->{cgi}{$ip_key}        = $conf->{interface}{$interface}{ip}        if not $conf->{cgi}{$ip_key};
-		$conf->{cgi}{$subnet_key}    = $conf->{interface}{$interface}{subnet}    if not $conf->{cgi}{$subnet_key};
-		$conf->{cgi}{$gateway_key}   = $conf->{interface}{$interface}{gateway}   if not $conf->{cgi}{$gateway_key};
-		$conf->{cgi}{$dns1_key}      = $conf->{interface}{$interface}{dns1}      if not $conf->{cgi}{$dns1_key};
-		$conf->{cgi}{$dns2_key}      = $conf->{interface}{$interface}{dns2}      if not $conf->{cgi}{$dns2_key};
-		$conf->{cgi}{$defroute_key}  = $conf->{interface}{$interface}{defroute}  if not $conf->{cgi}{$defroute_key};
-		$conf->{cgi}{$bootproto_key} = $conf->{interface}{$interface}{bootproto} if not $conf->{cgi}{$bootproto_key};
-		
-		# Always set by what was read. Using 'cgi' for convenience's
-		# sake.
-		$conf->{cgi}{$link_up_key}    = $conf->{interface}{$interface}{link_up};
-		$conf->{cgi}{$duplex_key}     = $conf->{interface}{$interface}{duplex};
-		$conf->{cgi}{$mac_key}        = $conf->{interface}{$interface}{mac};
-		$conf->{cgi}{$speed_key}      = $conf->{interface}{$interface}{speed};
-		$conf->{cgi}{$max_speed_key}  = $conf->{interface}{$interface}{max_speed};
-		$conf->{cgi}{$max_duplex_key} = $conf->{interface}{$interface}{max_duplex};
-		$conf->{cgi}{$vendor_key}     = "?";
-		#print "Link: [$conf->{interface}{$interface}{link_up}], duplex: [$conf->{interface}{$interface}{duplex}], mac: [$conf->{interface}{$interface}{mac}], speed: [$conf->{interface}{$interface}{speed}], max_speed: [$conf->{interface}{$interface}{max_speed}]<br />\n";
-		
-		# If I have a MAC address, get the vendor.
-		if ($conf->{cgi}{$mac_key})
-		{
-			$conf->{cgi}{$vendor_key} = translate_mac_to_vendor($conf, $conf->{cgi}{$mac_key});
-		}
-		
-		# Build the form entry for this interface
-		my $say_state      = "";
-		my $say_duplex     = "";
-		my $say_max_duplex = "";
-		my $say_speed      = "";
-		my $say_max_speed  = "";
-		if ($conf->{cgi}{$duplex_key} eq "?")
-		{
-			$say_duplex = get_string($conf, {key => "generic_0010", variables => {}});
-		}
-		else
-		{
-			$say_duplex = $conf->{cgi}{$duplex_key} ? "#!string!generic_0008!#" : "#!string!generic_0009!#"; # 8 == full, 9 == half
-		}
-		if ($conf->{cgi}{$max_duplex_key} eq "?")
-		{
-			$say_max_duplex = get_string($conf, {key => "generic_0010", variables => {}});
-		}
-		else
-		{
-			$say_max_duplex = $conf->{cgi}{$max_duplex_key} ? "#!string!generic_0008!#" : "#!string!generic_0009!#"; # 8 == full, 9 == half
-		}
-		if ($conf->{cgi}{$speed_key} eq "?")
-		{
-			$say_speed = get_string($conf, {key => "generic_0010", variables => {}});
-		}
-		else
-		{
-			$say_speed = $conf->{cgi}{$speed_key};
-		}
-		if ($conf->{cgi}{$max_speed_key} eq "?")
-		{
-			$say_max_speed = get_string($conf, {key => "generic_0010", variables => {}});
-		}
-		else
-		{
-			$say_max_speed = $conf->{cgi}{$max_speed_key};
-		}
-		if ($conf->{cgi}{$link_up_key})
-		{
-			# Link is up
-			$say_state = get_string($conf, {key => 'install_0012', variables => {
-				link_status		=>	"#!string!generic_0006!#",
-				link_speed		=>	$say_speed,
-				link_duplex		=>	$say_duplex,
-				link_max_speed		=>	$say_max_speed,
-				link_max_duplex		=>	$say_max_duplex,
-			}});
-		}
-		else
-		{
-			# Link is down
-			$say_state = get_string($conf, {key => 'install_0013', variables => {
-				link_status		=>	"#!string!generic_0006!#",
-				link_speed		=>	$say_speed,
-				link_duplex		=>	$say_duplex,
-				link_max_speed		=>	$say_max_speed,
-				link_max_duplex		=>	$say_max_duplex,
-			}});
-		}
-		my $dg_selected = "";
-		if (($conf->{cgi}{defroute}) && ($conf->{cgi}{defroute} eq $interface))
-		{
-			$dg_selected = "checked";
-		}
-		elsif ((not $conf->{cgi}{defroute}) && ($i == 1))
-		{
-			$dg_selected = "checked";
-		}
-		my $say_mac_string = get_string($conf, {key => 'install_0014', variables => {mac_address => $conf->{cgi}{$mac_key}}});
-		my $variables = {};
-		my $replace   = {
-			interface_number	=>	$i,
-			interface		=>	$interface,
-			dg_selected		=>	$dg_selected,
-			'state'			=>	$say_state,
-			mac_string		=>	$say_mac_string,
-			vendor			=>	$conf->{cgi}{$vendor_key},
-			ip_variable		=>	"$ip_key",
-			ip_value		=>	$conf->{cgi}{$ip_key},
-			subnet_variable		=>	"$subnet_key",
-			subnet_value		=>	$conf->{cgi}{$subnet_key},
-			gateway_variable	=>	"$gateway_key",
-			gateway_value		=>	$conf->{cgi}{$gateway_key},
-			dns1_variable		=>	"$dns1_key",
-			dns1_value		=>	$conf->{cgi}{$dns1_key},
-			dns2_variable		=>	"$dns2_key",
-			dns2_value		=>	$conf->{cgi}{$dns2_key},
-		};
-		$nic_replace .= template($conf, "install", "nic_form", $variables, $replace);
-		$i++;
-	}
-	$conf->{cgi}{interfaces} =~ s/,$//;
-	
+	# Print the template.
 	my $variables = {};
 	my $replace   = {
 		language_select	=>	$select_language,
 		nic_form	=>	$nic_replace,
+	};
+	print template($conf, "monitor", "welcome", $variables, $replace);
+	
+	return(0);
+}
+
+# This summarizes the user's striker configuration for data and asks them to
+# confirm before proceeding.
+sub summarize_initial_striker_configuration
+{
+	my ($conf) = @_;
+	record($conf, {line => __LINE__, file => $THIS_FILE, level => 4, message => "-> summarize_initial_striker_configuration()\n"});
+	
+	# Print the template.
+	my $language_options = get_languages($conf);
+	my $select_language = build_html_select($conf, {
+		select_name	=>	"language",
+		select_id	=>	"language",
+		selected_option	=>	$conf->{cgi}{language},
+		blank_option	=>	0,
+		options		=>	$language_options,
+		attributes	=>	"onselect='null()'",
+	});
+	record($conf, {line => __LINE__, file => $THIS_FILE, level => 4, message => "select_language: [$select_language]\n"});
+	
+	my ($nic_replace) = gather_network_interface_info($conf, "summarize");
+	my $variables = {};
+	my $replace   = {
+		language_select	=>	$select_language,
+		nic_form	=>	$nic_replace,
+	};
+	print template($conf, "install", "summarize", $variables, $replace);
+	
+	return(0);
+}
+
+# This is run when the host system is determined to be a 'striker' dashboard 
+# and has not been configured. When done, it will create the configuration 
+# file. The existance of that file prevents this from running again.
+sub initial_striker_configuration
+{
+	my ($conf) = @_;
+	
+	# Build the language select input.
+	my $language_options = get_languages($conf);
+	my $select_language = build_html_select($conf, {
+		select_name	=>	"language",
+		select_id	=>	"language",
+		selected_option	=>	$conf->{cgi}{language},
+		blank_option	=>	0,
+		options		=>	$language_options,
+		attributes	=>	"onselect='null()'",
+	});
+	
+	if (not $conf->{cgi}{system_timezone})
+	{
+		$conf->{cgi}{system_timezone} = $conf->{sys}{system_timezone};
+	}
+	my $system_timezone = build_timezone_select($conf, {
+		select_name	=>	"system_timezone",
+		select_id	=>	"system_timezone",
+		selected_option	=>	$conf->{cgi}{system_timezone},
+		blank_option	=>	0,
+		attributes	=>	"",
+	});
+	
+	# Call the 'gather-system-info' tool
+	call_gather_system_info($conf);
+	
+	# This collects the network interface information
+	my ($nic_replace) = gather_network_interface_info($conf, "initial");
+	
+	# If there is no hostname in {cgi} yet, set it to the hostname read by
+	# gather-system-ingo.
+	#print "<pre>cgi::system_name: [$conf->{cgi}{system_name}], sys::hostname: [$conf->{sys}{hostname}]</pre>\n";
+	if ((not $conf->{cgi}{system_name}) && ($conf->{sys}{hostname}))
+	{
+		$conf->{cgi}{system_name} = $conf->{sys}{hostname};
+	}
+	
+	# Print the template.
+	my $variables = {};
+	my $replace   = {
+		language_select	=>	$select_language,
+		nic_form	=>	$nic_replace,
+		system_timezone	=>	$system_timezone,
 	};
 	print template($conf, "install", "welcome", $variables, $replace);
 	
@@ -420,18 +1503,20 @@ sub initial_configuration
 # This initializes a call; reads variables, etc.
 sub initialize
 {
+	my ($caller) = @_;
+	
 	# Set default configuration variable values
-	my ($conf) = initialize_conf();
+	my ($conf) = initialize_conf($caller);
 	
 	# First thing first, initialize the web session.
 	initialize_http($conf);
-	
+
 	# First up, read in the default strings file.
 	read_strings($conf);
-	
+
 	# Read in the configuration file. If the file doesn't exist, initial 
 	# setup will be triggered.
-	read_configuration_file($conf);
+	read_configuration_file($conf, $caller);
 	
 	return($conf);
 }
@@ -439,9 +1524,11 @@ sub initialize
 # Set default configuration variable values
 sub initialize_conf
 {
+	my ($caller) = @_;
+	
 	my $conf = {
 		path				=>	{
-			config_file			=>	"./striker.conf",
+			config_file			=>	"/etc/an/striker.conf",
 			languages			=>	"./strings.xml",
 			log_file			=>	"../logs/striker.log",
 			skins				=>	"../html/skins/",
@@ -457,6 +1544,17 @@ sub initialize_conf
 			html_lang			=>	"en",
 			skin				=>	"alteeve",
 			version				=>	"0.0.1",
+			log_level			=>	3,
+			use_24h				=>	1,			# Set to 0 for am/pm time, 1 for 24h time
+			date_seperator			=>	"-",			# Should put these in the strings.xml file
+			time_seperator			=>	":",
+			log_language			=>	"en_CA",
+			system_timezone			=>	"America/Toronto",
+		},
+		db				=>	{
+			name				=>	"an-${caller}",
+			user				=>	"alteeve",
+			password			=>	"secret",
 		},
 		url				=>	{
 			skins				=>	"/skins/",
@@ -527,22 +1625,27 @@ sub record
 {
 	my ($conf, $variables) = @_;
 	
-	my $line    = $conf->{line}    ? $conf->{line}    : "--";
-	my $file    = $conf->{file}    ? $conf->{file}    : "--";
-	my $message = $conf->{message} ? $conf->{message} : "--";
+	my $line    = $variables->{line}    ? $variables->{line}    : "--";
+	my $file    = $variables->{file}    ? $variables->{file}    : "--";
+	my $level   = $variables->{level}   ? $variables->{level}   : 1;
+	my $message = $variables->{message} ? $variables->{message} : "--";
 	
-	my $fh = $conf->{handles}{'log'};
-	if (not $fh)
+	#print "<pre>record; line: [$line], file: [$file], level: [$level] (sys::log_level: [$conf->{sys}{log_level}]), message: [$message]</pre>\n";
+	if ($conf->{sys}{log_level} >= $level)
 	{
-		$fh                     = IO::Handle->new();
-		$conf->{handles}{'log'} = $fh;
-		my $current_dir         = $ENV{CONTEXT_DOCUMENT_ROOT} ? $ENV{CONTEXT_DOCUMENT_ROOT} : $ENV{PWD} ? $ENV{PWD} : "/var/www/cgi-bin/";
-		my $log_file            = $current_dir.$conf->{path}{log_file};
-		open ($fh, ">>$log_file") or hard_die($conf, $THIS_FILE, __LINE__, 13, "Unable to open the file: [$log_file] for writting. The error was: $!.\n");
-		
-		print $fh "======\nStriker - AN! Cluster Dashboard - Opening log at ".time."\n";
+		my $fh = $conf->{handles}{'log'};
+		if (not $fh)
+		{
+			$fh                     = IO::Handle->new();
+			$conf->{handles}{'log'} = $fh;
+			my $current_dir         = get_current_directory($conf);
+			my $log_file            = $current_dir."/".$conf->{path}{log_file};
+			my ($date, $time)       = get_date_and_time($conf);
+			open ($fh, ">>$log_file") or hard_die($conf, $THIS_FILE, __LINE__, 13, "Unable to open the file: [$log_file] for writing. The error was: $!.\n");
+			print $fh "======\nLog opened on $date at $time\n";
+		}
+		print $fh "$THIS_FILE $line; $message";
 	}
-	print $fh $message;
 	
 	return(0);
 }
@@ -558,7 +1661,7 @@ sub template
 	# Down the road, I may want to have different suffixes depending on the
 	# user's environment. For now, it'll always be ".html".
 	my $suffix        = ".html";
-	my $current_dir   = $ENV{CONTEXT_DOCUMENT_ROOT} ? $ENV{CONTEXT_DOCUMENT_ROOT} : $ENV{PWD} ? $ENV{PWD} : "/var/www/cgi-bin/";
+	my $current_dir   = get_current_directory($conf);
 	my $template_file = $current_dir."/".$conf->{path}{skins}."/".$conf->{sys}{skin}."/".$file.$suffix;
 	
 	# Make sure the file exists.
@@ -611,7 +1714,9 @@ sub template
 		
 		# Process all the #!...!# escape variables.
 		#print "$THIS_FILE ".__LINE__."; >> string: [$string]\n";
+		#print __LINE__."; >> file: [$file], template: [$template], string: [$string]\n";
 		($string) = process_string($conf, $string, $variables);
+		#print __LINE__."; << file: [$file], template: [$template], string: [$string\n";
 		#print "$THIS_FILE ".__LINE__."; << string: [$string]\n";
 		$page .= "$string\n";
 	}
@@ -642,18 +1747,23 @@ sub process_string
 	my ($conf, $string, $variables) = @_;
 	
 	# Insert variables into #!var!x!# 
+	my $i = 0;
+	#print __LINE__."; >> string: [$string]\n";
+	#print __LINE__."; [$i], 1.\n";
 	($string) = insert_variables_into_string($conf, $string, $variables);
 	
-	my $i = 0;
 	while ($string =~ /#!(.+?)!#/s)
 	{
 		# Insert strings that are referenced in this string.
+		#print __LINE__."; [$i], 2.\n";
 		($string) = process_string_insert_strings($conf, $string);
 		
 		# Protect unmatchable keys.
+		#print __LINE__."; [$i], 3.\n";
 		($string) = process_string_protect_escape_variables($conf, $string, "string");
 
 		# Inject any 'conf' values.
+		#print __LINE__."; [$i], 4.\n";
 		($string) = process_string_conf_escape_variables($conf, $string);
 		
 		# Die if I've looped too many times.
@@ -666,6 +1776,12 @@ sub process_string
 
 	# Restore and unrecognized substitution values.
 	($string) = process_string_restore_escape_variables($conf, $string);
+	#print __LINE__."; << string: [$string]\n";
+	if ($string =~ /Etc\/GMT\+0/)
+	{
+		$conf->{i}++;
+		die if $conf->{i} > 10;
+	}
 	
 	return($string);
 }
@@ -682,6 +1798,7 @@ sub process_string_insert_strings
 		# string is needed, the user should process it and pass the
 		# completed string to the template function as a
 		# #!replace!...!# substitution variable.
+		#print __LINE__."; >>> string: [$string]\n";
 		my $say_string = get_string($conf, {key => $key});
 		if ($say_string eq "")
 		{
@@ -691,6 +1808,7 @@ sub process_string_insert_strings
 		{
 			$string =~ s/#!string!$key!#/$say_string/;
 		}
+		#print __LINE__."; <<< string: [$string]\n";
 	}
 	
 	return($string);
@@ -797,12 +1915,44 @@ sub process_string_restore_escape_variables
 # be triggered.
 sub read_configuration_file
 {
-	my ($conf) = @_;
+	my ($conf, $caller) = @_;
 	
 	if (not -e $conf->{path}{config_file})
 	{
-		# Must be a new install.
-		initial_configuration($conf);
+		# The use might be saving the new values. Read the CGI 
+		# variables now and check.
+		record($conf, {line => __LINE__, file => $THIS_FILE, level => 2, message => "reading vars\n"});
+		get_cgi_vars($conf, [
+			"config_name",
+			"defroute",
+			"interfaces",
+			"language",
+			"org_name",
+			"save",
+			"striker_db_name",
+			"striker_db_password",
+			"striker_db_user",
+			"striker_user",
+			"striker_password",
+			"summary",
+			"system_name",
+			"system_timezone",
+		]);
+		
+		record($conf, {line => __LINE__, file => $THIS_FILE, level => 4, message => "cgi::summary: [$conf->{cgi}{summary}]\n"});
+		if ($conf->{cgi}{summary})
+		{
+			summarize_initial_configuration($conf, $caller);
+		}
+		elsif ($conf->{cgi}{save})
+		{
+			write_config($conf, $caller);
+		}
+		else
+		{
+			# Must be a new install.
+			initial_configuration($conf, $caller);
+		}
 	}
 	else
 	{
@@ -938,13 +2088,9 @@ sub read_strings
 				}
 
 				# Pull out the key and name.
-				my $key  =  $line;
-				my $name =  $line;
-				my $data =  $line;
-				   $key  =~ s/^<(\w+).*/$1/;
-				   $name =~ s/^<$key name="(\w+).*/$1/;
-				   $data =~ s/^<$key name="$name">(.*?)<\/$key>(.*)/$1/;
-				   $data =  $cdata if $cdata;
+				my ($key) = ($line =~ /^<(.*?) /);
+				my ($name, $data) = ($line =~ /^<$key name="(.*?)">(.*?)<\/$key>/);
+				$data =  $cdata if $cdata;
 				_make_hash_reference($string_ref, "${key_name}::${key}::${name}::content", $data);
 				next;
 			}
@@ -1097,6 +2243,37 @@ sub read_strings
 	
 	return(0);
 }
+
+# This writes out the initial config file for striker or monitor.
+sub write_config
+{
+	my ($conf, $caller) = @_;
+	
+	# Make sure the user isn't re-running this.
+	if (-e $conf->{path}{config_file})
+	{
+		# Bail out.
+		
+	}
+	else
+	{
+		# Write the file.
+		my $shell_call  = $conf->{path}{config_file};
+		my $file_handle = IO::Handle->new();
+		open ($file_handle, ">>$shell_call") or hard_die($conf, $THIS_FILE, __LINE__, 14, "Failed to write the config file: [$shell_call]. The error was: $!\n");
+		binmode $file_handle, ":utf8:";
+		my $config = get_string($conf, {key => "config_0001", variables => {
+			db_name		=>	$conf->{cgi}{db_name},
+			db_user		=>	$conf->{cgi}{db_user},
+			db_password	=>	$conf->{cgi}{db_password},
+		}});
+		print $file_handle 
+		$file_handle->close();
+	}
+	
+	return(0);
+}
+
 
 ###############################################################################
 ### Private functions                                                       ###

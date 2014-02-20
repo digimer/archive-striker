@@ -1,0 +1,41 @@
+#!/usr/bin/perl
+# 
+# This super-simple script looks to see if '/etc/cluster/cluster.conf' exists.
+# If so, it forwards the user to 'monitor'. If not, it forwards the user to
+# 'striker'
+#
+
+use strict;
+use warnings;
+
+print "Content-type: text/html; charset=utf-8\n\n";
+
+if (( -e '/etc/cluster/cluster.conf' ) or ( -e '/var/lib/heartbeat/crm/cib.xml' ))
+{
+	print q|
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+	<title>AN! Monitor</title>
+	<META HTTP-EQUIV="Refresh" CONTENT="0; URL=/cgi-bin/monitor">
+</head>
+<body>
+	Hello.<br />
+	I think this is a cluster node.
+</body>
+|;
+}
+else
+{
+	print q|
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+	<title>Alteeve's Niche! - Striker</title>
+	<META HTTP-EQUIV="Refresh" CONTENT="0; URL=/cgi-bin/striker">
+</head>
+<body>
+	Hello.<br />
+</body>
+|;
+}
+
+exit(0);

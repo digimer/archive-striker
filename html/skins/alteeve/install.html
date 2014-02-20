@@ -3,6 +3,139 @@ This is the template file used when running the installation of AN!Striker for
 the first time. 
 -->
 
+<!-- start summarize -->
+<!DOCTYPE html>
+<html lang="#!conf!sys::html_lang!#">
+	<head>
+		<title>#!string!install_0001!# - #!string!install_0002!#</title>
+		<!-- Common JS and CSS -->
+		<script type="text/javascript" src="#!conf!url::skins!#/#!conf!sys::skin!#/common.js"></script>
+		<link rel="stylesheet" type="text/css" media="all" href="#!conf!url::skins!#/#!conf!sys::skin!#/common.css" />
+		
+		<!-- Install-specific JS and CSS -->
+		<script type="text/javascript" src="#!conf!url::skins!#/#!conf!sys::skin!#/install.js"></script>
+		<link rel="stylesheet" type="text/css" media="all" href="#!conf!url::skins!#/#!conf!sys::skin!#/install.css" />
+		
+		<!-- JQuery -->
+		<script type="text/javascript" src="/jquery.js"></script>
+	</head>
+	<body>
+		<div class="parent_table">
+			<form>
+				<div class="title">#!string!install_0001!#</div>
+				<div class="subtitle">#!string!install_0002!#</div>
+				<div class="welcome_message">#!string!install_0006!#</div>
+				<div class="welcome_body">#!string!install_0029!#</div>
+				<div class="note">#!string!alert_0001!#: #!string!alert_0002!#</div>
+				<br />
+				<div class="help_links"><a href='#!string!url_0006!#'>#!string!url_0005!#</a> - <a href='#!string!url_0008!#'>#!string!url_0007!#</a> - <a href='#!string!url_0002!#'>#!string!url_0001!#</a> - <a href='#!string!url_0004!#'>#!string!url_0003!#</a></div>
+				<br />
+				<table class="form_body">
+					<tr>
+						<td class="form_left_column">
+							#!string!install_0003!#:
+						</td>
+						<td class="form_center_column">
+							<input type="text" name="org_name" value="#!conf!cgi::org_name!#" placeholder="#!string!html_0013!#">
+						</td>
+						<td class="form_right_column">
+							&nbsp;
+						</td>
+					</tr>
+					<tr>
+						<td class="form_left_column">
+							#!string!install_0027!#:
+						</td>
+						<td class="form_center_column">
+							<input type="text" name="striker_user" value="#!conf!cgi::striker_user!#" placeholder="#!string!html_0010!#">
+						</td>
+						<td class="form_right_column">
+							&nbsp;
+						</td>
+					</tr>
+					<tr>
+						<td class="form_left_column">
+							#!string!install_0028!#:
+						</td>
+						<td class="form_center_column">
+							<input type="text" name="striker_password" value="#!conf!cgi::striker_password!#" placeholder="#!string!html_0011!#">
+						</td>
+						<td class="form_right_column">
+							&nbsp;
+						</td>
+					</tr>
+					<tr>
+						<td class="form_left_column">
+							#!string!install_0022!#:
+						</td>
+						<td class="form_center_column">
+							<input type="text" name="striker_db_name" value="#!conf!cgi::striker_db_user!#" placeholder="#!string!html_0012!#">
+						</td>
+						<td class="form_right_column">
+							&nbsp;
+						</td>
+					</tr>
+					<tr>
+						<td class="form_left_column">
+							#!string!install_0023!#:
+						</td>
+						<td class="form_center_column">
+							<input type="text" name="striker_db_user" value="#!conf!cgi::striker_db_user!#" placeholder="#!string!html_0010!#">
+						</td>
+						<td class="form_right_column">
+							&nbsp;
+						</td>
+					</tr>
+					<tr>
+						<td class="form_left_column">
+							#!string!install_0024!#:
+						</td>
+						<td class="form_center_column">
+							<input type="text" name="striker_db_password" value="#!conf!cgi::striker_db_password!#" placeholder="#!string!html_0011!#">
+						</td>
+						<td class="form_right_column">
+							&nbsp;
+						</td>
+					</tr>
+					<tr>
+						<td class="form_left_column">
+							#!string!install_0004!#:
+						</td>
+						<td class="form_center_column">
+							<input type="text" name="system_name" value="#!conf!cgi::system_name!#" placeholder="#!string!html_0001!#">
+						</td>
+						<td class="form_right_column">
+							&nbsp;
+						</td>
+					</tr>
+					<tr>
+						<td class="form_left_column">
+							#!string!install_0030!#:
+						</td>
+						<td class="form_center_column">
+							#!replace!system_timezone!#
+						</td>
+						<td class="form_right_column">
+							#!string!note_0001!#
+						</td>
+					</tr>
+					#!replace!nic_form!#
+					<tr>
+						<td class="form_left_column">
+							<input type="hidden" name="summary" value="true">
+							<button type="submit" class="button">#!string!generic_0011!#</button>
+						</td>
+						<td class="form_wide_right_column" colspan="2">
+							&nbsp;
+						</td>
+					</tr>
+				</table>
+			</form>
+		</div>
+	</body>
+</html>
+<!-- end summarize -->
+
 <!-- start welcome -->
 <!DOCTYPE html>
 <html lang="#!conf!sys::html_lang!#">
@@ -18,108 +151,308 @@ the first time.
 		
 		<!-- JQuery -->
 		<script type="text/javascript" src="/jquery.js"></script>
-		
-		<!-- Bootstrap; http://twitter.github.io/bootstrap/getting-started.html -->
-		<meta name="viewport" content="width=device-width, initial-scale=1.0">
-		<script type="text/javascript" src="/bootstrap/js/bootstrap.js"></script>
-		<link rel="stylesheet" type="text/css" media="all" href="/bootstrap/css/bootstrap.min.css" />
-		<link rel="stylesheet" type="text/css" media="all" href="/bootstrap/css/bootstrap-responsive.min.css" />
 	</head>
 	<body>
-		<div class="container" style="background-color: #f7f7f7;">
-			<h1>#!string!install_0001!#</h1>
-			<h4>#!string!install_0002!#</h4>
-			<div id='content' class='row-fluid'>
-				<form>
-					<div class='span10 main'>
-						<h5>#!string!install_0005!#</h5>
-						<h4>#!string!install_0006!#</h4>
-						<br />
-						#!string!install_0007!#<br /><br />
-						<div class='span2 main'>
+		<div class="parent_table">
+			<form>
+				<div class="explain_action">#!string!install_0005!#</div>
+				<div class="title">#!string!install_0001!#</div>
+				<div class="subtitle">#!string!install_0002!#</div>
+				<div class="welcome_message">#!string!install_0006!#</div>
+				<div class="welcome_body">#!string!install_0007!#</div>
+				<br />
+				<div class="help_links"><a href='#!string!url_0006!#'>#!string!url_0005!#</a> - <a href='#!string!url_0008!#'>#!string!url_0007!#</a> - <a href='#!string!url_0002!#'>#!string!url_0001!#</a> - <a href='#!string!url_0004!#'>#!string!url_0003!#</a></div>
+				<br />
+				<table class="form_body">
+					<tr>
+						<td class="form_left_column">
 							#!string!install_0008!#:
-						</div>
-						<div class='span8 main'>
+						</td>
+						<td class="form_center_column">
 							<input type="file" name="config_file" value=""> <input type="submit" name="null" value="#!string!generic_0004!#" class="button">
-						</div>
-						<div class='span2 main' style='text-align: center; font-weight: bold;'>
-							OR
-						</div>
-						<div class='span8 main'>
+						</td>
+						<td class="form_right_column">
 							&nbsp;
-						</div>
-						<div class='span2 main'>
+						</td>
+					</tr>
+					<tr>
+						<td class="form_wide_column" colspan="3" style="border-bottom: 1px dotted #cfbfbf; border-top: 1px dotted #cfbfbf;">
+							#!string!generic_0015!#
+						</td>
+					</tr>
+					<tr>
+						<td class="form_left_column">
+							#!string!install_0003!#:
+						</td>
+						<td class="form_center_column">
+							<input type="text" name="org_name" value="#!conf!cgi::org_name!#" placeholder="#!string!html_0013!#">
+						</td>
+						<td class="form_right_column">
+							&nbsp;
+						</td>
+					</tr>
+					<tr>
+						<td class="form_left_column">
+							#!string!install_0027!#:
+						</td>
+						<td class="form_center_column">
+							<input type="text" name="striker_user" value="#!conf!cgi::striker_user!#" placeholder="#!string!html_0010!#">
+						</td>
+						<td class="form_right_column">
+							&nbsp;
+						</td>
+					</tr>
+					<tr>
+						<td class="form_left_column">
+							#!string!install_0028!#:
+						</td>
+						<td class="form_center_column">
+							<input type="text" name="striker_password" value="#!conf!cgi::striker_password!#" placeholder="#!string!html_0011!#">
+						</td>
+						<td class="form_right_column">
+							&nbsp;
+						</td>
+					</tr>
+					<tr>
+						<td class="form_left_column">
+							#!string!install_0022!#:
+						</td>
+						<td class="form_center_column">
+							<input type="text" name="striker_db_name" value="#!conf!cgi::striker_db_user!#" placeholder="#!string!html_0012!#">
+						</td>
+						<td class="form_right_column">
+							&nbsp;
+						</td>
+					</tr>
+					<tr>
+						<td class="form_left_column">
+							#!string!install_0023!#:
+						</td>
+						<td class="form_center_column">
+							<input type="text" name="striker_db_user" value="#!conf!cgi::striker_db_user!#" placeholder="#!string!html_0010!#">
+						</td>
+						<td class="form_right_column">
+							&nbsp;
+						</td>
+					</tr>
+					<tr>
+						<td class="form_left_column">
+							#!string!install_0024!#:
+						</td>
+						<td class="form_center_column">
+							<input type="text" name="striker_db_password" value="#!conf!cgi::striker_db_password!#" placeholder="#!string!html_0011!#">
+						</td>
+						<td class="form_right_column">
+							&nbsp;
+						</td>
+					</tr>
+					<tr>
+						<td class="form_left_column">
 							#!string!install_0004!#:
-						</div>
-						<div class='span8 main'>
+						</td>
+						<td class="form_center_column">
 							<input type="text" name="system_name" value="#!conf!cgi::system_name!#" placeholder="#!string!html_0001!#">
-						</div>
-						#!replace!nic_form!#
-						<div class='span10 main'>
-							<button type="submit" class="button">#!string!generic_0011!#</button>
-						</div>
-						<div class='span10 main'>
+						</td>
+						<td class="form_right_column">
 							&nbsp;
-						</div>
-					</div>
-				</form>
-				<div class='span2 sidebar'>
-					<h2>#!string!generic_0003!#</h2>
-					<ul class="nav nav-tabs nav-stacked">
-						<li><a href='#!string!url_0006!#'>#!string!url_0005!#</a></li>
-						<li><a href='#!string!url_0008!#'>#!string!url_0007!#</a></li>
-						<li><a href='#!string!url_0002!#'>#!string!url_0001!#</a></li>
-						<li><a href='#!string!url_0004!#'>#!string!url_0003!#</a></li>
-					</ul>
-				</div>
-			</div>
+						</td>
+					</tr>
+					<tr>
+						<td class="form_left_column">
+							#!string!install_0030!#:
+						</td>
+						<td class="form_center_column">
+							#!replace!system_timezone!#
+						</td>
+						<td class="form_right_column">
+							#!string!note_0001!#
+						</td>
+					</tr>
+					#!replace!nic_form!#
+					<input type="hidden" name="interfaces" value="#!conf!cgi::interfaces!#">
+					<tr>
+						<td class="form_left_column">
+							<input type="hidden" name="summary" value="true">
+							<button type="submit" class="button">#!string!generic_0011!#</button>
+						</td>
+						<td class="form_wide_right_column" colspan="2">
+							&nbsp;
+						</td>
+					</tr>
+				</table>
+			</form>
 		</div>
 	</body>
-
 </html>
 <!-- end welcome -->
 
-<!-- start nic_form -->
-						<div class='span2 main'>
+<!-- start nic_summarize -->
+					<tr>
+						<td class="form_left_column">
 							#!string!install_0011!# #!replace!interface_number!#:
-						</div>
-						<div class='span8 main'>
+						</td>
+						<td class="form_eide_right_column" colspan="2">
 							#!replace!vendor!#, #!replace!mac_string!#
-						</div>
-						<div class='span2 main'>
+						</td>
+					</tr>
+					<tr>
+						<td class="form_left_column">
 							&nbsp;
-						</div>
-						<div class='span8 main'>
+						</td>
+						<td class="form_eide_right_column" colspan="2">
 							#!replace!state!#
-						</div>
-						<div class='span2 main'>
-							#!string!install_0009!#:
-						</div>
-						<div class='span8 main'>
-							<input type="text" name="#!replace!ip_variable!#" value="#!replace!ip_value!#" placeholder="#!string!html_0002!#">
-						</div>
-						<div class='span2 main'>
-							#!string!install_0010!#:
-						</div>
-						<div class='span8 main'>
-							<input type="text" name="#!replace!subnet_variable!#" value="#!replace!subnet_value!#" placeholder="#!string!html_0003!#">
-						</div>
-						<div class='span2 main'>
-							#!string!install_0015!#:
-						</div>
-						<div class='span8 main'>
-							<input type="text" name="#!replace!gateway_variable!#" value="#!replace!gateway_value!#" placeholder="#!string!html_0004!#"> <input type="radio" name="defroute" value="#!replace!interface!#" #!replace!dg_selected!#> #!string!install_0018!#
-						</div>
-						<div class='span2 main'>
-							#!string!install_0016!#:
-						</div>
-						<div class='span8 main'>
-							<input type="text" name="#!replace!dns1_variable!#" value="#!replace!dns1_value!#" placeholder="#!string!html_0005!#">
-						</div>
-						<div class='span2 main'>
-							#!string!install_0017!#:
-						</div>
-						<div class='span8 main'>
-							<input type="text" name="#!replace!dns2_variable!#" value="#!replace!dns2_value!#" placeholder="#!string!html_0006!#">
-						</div>
+						</td>
+					</tr>
+					<tr>
+						<td class="form_left_column">
+							&nbsp;
+						</td>
+						<td class="form_wide_right_column">
+							<table class="embedded_table">
+								<tr>
+									<td class="form_left_column">
+										#!string!install_0025!#:
+									</td>
+									<td class="form_wide_right_column" colspan="2">
+										<input type="hidden" name="#!replace!interface_name_variable!#" value="#!replace!interface_name_value!#">
+										<span class="fixed_width_subtle">#!replace!interface!#</span>
+									</td>
+								</tr>
+								<tr>
+									<td class="form_left_column">
+										#!string!install_0009!#:
+									</td>
+									<td class="form_wide_right_column" colspan="2">
+										<input type="text" name="#!replace!ip_variable!#" value="#!replace!ip_value!#" placeholder="#!string!html_0002!#">
+									</td>
+								</tr>
+								<tr>
+									<td class="form_left_column">
+										#!string!install_0010!#:
+									</td>
+									<td class="form_wide_right_column" colspan="2">
+										<input type="text" name="#!replace!subnet_variable!#" value="#!replace!subnet_value!#" placeholder="#!string!html_0003!#">
+									</td>
+								</tr>
+								<tr>
+									<td class="form_left_column">
+										#!string!install_0015!#:
+									</td>
+									<td class="form_wide_right_column" colspan="2">
+										<input type="text" name="#!replace!gateway_variable!#" value="#!replace!gateway_value!#" placeholder="#!string!html_0004!#">
+										<input type="radio" name="defroute" value="#!replace!interface!#" #!replace!dg_selected!#> #!string!install_0018!#
+									</td>
+								</tr>
+								<tr>
+									<td class="form_left_column">
+										#!string!install_0016!#:
+									</td>
+									<td class="form_wide_right_column" colspan="2">
+										<input type="text" name="#!replace!dns1_variable!#" value="#!replace!dns1_value!#" placeholder="#!string!html_0005!#">
+									</td>
+								</tr>
+								<tr>
+									<td class="form_left_column">
+										#!string!install_0017!#:
+									</td>
+									<td class="form_wide_right_column" colspan="2">
+										<input type="text" name="#!replace!dns2_variable!#" value="#!replace!dns2_value!#" placeholder="#!string!html_0006!#">
+									</td>
+								</tr>
+								<tr>
+									<td class="form_left_column">
+										#!string!install_0026!#:
+									</td>
+									<td class="form_wide_right_column" colspan="2">
+										<input type="text" name="#!replace!mtu_variable!#" value="#!replace!mtu_value!#">
+									</td>
+								</tr>
+							</table>
+						</td>
+					</tr>
+<!-- end nic_sammarize -->
+
+<!-- start nic_form -->
+					<tr>
+						<td class="form_left_column">
+							#!string!install_0011!# #!replace!interface_number!#:
+						</td>
+						<td class="form_eide_right_column" colspan="2">
+							#!replace!vendor!#, #!replace!mac_string!#
+						</td>
+					</tr>
+					<tr>
+						<td class="form_left_column">
+							&nbsp;
+						</td>
+						<td class="form_eide_right_column" colspan="2">
+							#!replace!state!#
+						</td>
+					</tr>
+					<tr>
+						<td class="form_left_column">
+							&nbsp;
+						</td>
+						<td class="form_wide_right_column">
+							<table class="embedded_table">
+								<tr>
+									<td class="form_left_column">
+										#!string!install_0025!#:
+									</td>
+									<td class="form_wide_right_column" colspan="2">
+										<input type="text" name="#!replace!interface_name_variable!#" value="#!replace!interface_name_value!#"> (<span class="fixed_width_subtle">#!replace!interface!#</span>)
+									</td>
+								</tr>
+								<tr>
+									<td class="form_left_column">
+										#!string!install_0009!#:
+									</td>
+									<td class="form_wide_right_column" colspan="2">
+										<input type="text" name="#!replace!ip_variable!#" value="#!replace!ip_value!#" placeholder="#!string!html_0002!#">
+									</td>
+								</tr>
+								<tr>
+									<td class="form_left_column">
+										#!string!install_0010!#:
+									</td>
+									<td class="form_wide_right_column" colspan="2">
+										<input type="text" name="#!replace!subnet_variable!#" value="#!replace!subnet_value!#" placeholder="#!string!html_0003!#">
+									</td>
+								</tr>
+								<tr>
+									<td class="form_left_column">
+										#!string!install_0015!#:
+									</td>
+									<td class="form_wide_right_column" colspan="2">
+										<input type="text" name="#!replace!gateway_variable!#" value="#!replace!gateway_value!#" placeholder="#!string!html_0004!#">
+										<input type="radio" name="defroute" value="#!replace!interface!#" #!replace!dg_selected!#> #!string!install_0018!#
+									</td>
+								</tr>
+								<tr>
+									<td class="form_left_column">
+										#!string!install_0016!#:
+									</td>
+									<td class="form_wide_right_column" colspan="2">
+										<input type="text" name="#!replace!dns1_variable!#" value="#!replace!dns1_value!#" placeholder="#!string!html_0005!#">
+									</td>
+								</tr>
+								<tr>
+									<td class="form_left_column">
+										#!string!install_0017!#:
+									</td>
+									<td class="form_wide_right_column" colspan="2">
+										<input type="text" name="#!replace!dns2_variable!#" value="#!replace!dns2_value!#" placeholder="#!string!html_0006!#">
+									</td>
+								</tr>
+								<tr>
+									<td class="form_left_column">
+										#!string!install_0026!#:
+									</td>
+									<td class="form_wide_right_column" colspan="2">
+										<input type="text" name="#!replace!mtu_variable!#" value="#!replace!mtu_value!#">
+									</td>
+								</tr>
+							</table>
+						</td>
+					</tr>
 <!-- end nic_form -->

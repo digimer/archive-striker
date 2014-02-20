@@ -23,10 +23,12 @@ parse_oui($conf);
 
 foreach my $oui (sort {$a cmp $b} keys %{$conf->{oui}})
 {
-	my $say_oui =  $oui;
-	   $say_oui =~ s/(\w\w)(\w\w)(\w\w)/$1:$2:$3/;
+	my $say_oui    =  $oui;
+	   $say_oui    =~ s/(\w\w)(\w\w)(\w\w)/$1:$2:$3/;
+	my $say_vendor =  $conf->{oui}{$oui}{vendor};
+	   $say_vendor =~ s/&/&amp;/g;
 	#print "OUI: [$say_oui], Vendor: [$conf->{oui}{$oui}{vendor}], address: [$conf->{oui}{$oui}{address}]\n";
-	print "\t\t<key name=\"oui_".lc($oui)."\">$conf->{oui}{$oui}{vendor}</key>\n";
+	print "\t\t<key name=\"oui_".lc($oui)."\">$say_vendor</key>\n";
 }
 
 # These are manually added.

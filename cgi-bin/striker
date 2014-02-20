@@ -40,7 +40,7 @@ require 'striker.lib';
 # Set static variables.
 my $THIS_FILE = "striker";
 
-my ($conf) = initialize();
+my ($conf) = initialize($THIS_FILE);
 
 # Check for passed CGI variables.
 get_cgi_vars($conf, [

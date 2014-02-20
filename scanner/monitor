@@ -34,13 +34,13 @@ use utf8;
 use IO::Handle;
 
 # Require libraries
-require '../cgi-bin/common.lib';	# This gets copied from the Striker version.
+require 'common.lib';
 require 'monitor.lib';
 
 # Set static variables.
 my $THIS_FILE = "monitor";
 
-my ($conf) = initialize();
+my ($conf) = initialize($THIS_FILE);
 
 # Check for passed CGI variables.
 get_cgi_vars($conf, [
