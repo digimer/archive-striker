@@ -29,25 +29,16 @@
 # Use modules
 use strict;
 use warnings;
-use CGI;
 use utf8;
 use IO::Handle;
 
 # Require libraries
-require 'common.lib';
-require 'monitor.lib';
+require 'striker-scanner.lib';
 
 # Set static variables.
-my $THIS_FILE = "monitor";
+my $THIS_FILE = "striker-scanner";
 
 my ($conf) = initialize($THIS_FILE);
-
-# Check for passed CGI variables.
-get_cgi_vars($conf, [
-	"config_name",
-	"language",
-	"system_name",
-]);
 
 # Go to bed...
 exit (0);

@@ -1,13 +1,7 @@
 #!/usr/bin/perl
-# 
-# Common functions for 'striker'.
-#
 
 use strict;
 use warnings;
-
-# Set static variables.
-my $THIS_FILE = "striker.lib";
 
 
 # This initializes a call; reads variables, etc.
@@ -17,9 +11,6 @@ sub initialize
 	
 	# Set default configuration variable values
 	my ($conf) = initialize_conf($caller);
-	
-	# First thing first, initialize the web session.
-	initialize_http($conf);
 
 	# First up, read in the default strings file.
 	read_strings($conf);
@@ -39,14 +30,13 @@ sub initialize_conf
 	my $conf = {
 		path				=>	{
 			config_file			=>	"/etc/an/striker.conf",
-			languages			=>	"../cgi-bin/strings.xml",
-			log_file			=>	"../logs/striker.log",
-			skins				=>	"../html/skins/",
+			languages			=>	"./striker-scanner.xml",
+			log_file			=>	"/var/log/striker-scanner.log",
 		},
 		# These are setuid root C-wrapper scripts that allow apache to
 		# make system calls as root.
 		setuid				=>	{
-			'call_gather-system-info'	=>	"/var/www/tools/call_gather-system-info",
+			'call_gather-system-info'	=>	"./call_gather-system-info",
 		},
 		sys				=>	{
 			error_limit			=>	1000,
@@ -62,13 +52,9 @@ sub initialize_conf
 			system_timezone			=>	"America/Toronto",
 		},
 		db				=>	{
-			name				=>	"an-${caller}",
+			name				=>	"striker",
 			user				=>	"alteeve",
 			password			=>	"secret",
-		},
-		url				=>	{
-			skins				=>	"/skins/",
-			cgi				=>	"/cgi-bin/",
 		},
 		# Config values needed to managing strings
 		strings				=>	{
