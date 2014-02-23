@@ -33,6 +33,7 @@ use utf8;
 use IO::Handle;
 
 # Require libraries
+require 'common.lib';
 require 'striker-scanner.lib';
 
 # Set static variables.

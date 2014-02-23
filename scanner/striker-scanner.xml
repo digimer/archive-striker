@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<string>
+	<!-- Canadian English -->
+	<lang name="en_CA" long_name="English (Canadian)">
+		<key name="comment">Maintained by Madison Kelly (mkelly@alteeve.ca) for Striker.</key>
+<!-- Done! -->
+	</lang>
+
+<!-- Japanese -->
+	<lang name="ja" long_name="日本語">
+		<lang_comment>Madison Kelly、(mkelly@alteeve.ca)はStrikerのメッセージを維持しています。</lang_comment>
+		<!-- Installation messages -->
+	</lang>
+
+<!-- French -->
+	<lang name="fr" long_name="Français">
+		<lang_comment>Géré par Madison Kelly (mkelly@alteeve.ca) pour Striker.</lang_comment>
+		<!-- Installation messages -->
+		<key name="install_0001">l'installation de Striker</key>
+<!-- Done! -->
+	</lang>
+</string>

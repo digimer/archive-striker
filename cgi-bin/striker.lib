@@ -22,7 +22,7 @@ sub initialize
 	initialize_http($conf);
 
 	# First up, read in the default strings file.
-	read_strings($conf);
+	read_strings($conf, $caller);
 
 	# Read in the configuration file. If the file doesn't exist, initial 
 	# setup will be triggered.
@@ -39,7 +39,7 @@ sub initialize_conf
 	my $conf = {
 		path				=>	{
 			config_file			=>	"/etc/an/striker.conf",
-			languages			=>	"../cgi-bin/strings.xml",
+			languages			=>	"./strings.xml",
 			log_file			=>	"../logs/striker.log",
 			skins				=>	"../html/skins/",
 		},

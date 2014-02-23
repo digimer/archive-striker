@@ -1939,7 +1939,7 @@ sub read_configuration_file
 # This reads in the strings XML file.
 sub read_strings
 {
-	my ($conf) = @_;
+	my ($conf, $caller) = @_;
 	
 	my $string_ref = $conf;
 
