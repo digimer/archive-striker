@@ -1324,182 +1324,6 @@ sub hard_die
 	exit ($exit_code);
 }
 
-# Summarize the user's form data and ask them to confirm.
-sub summarize_initial_configuration
-{
-	my ($conf, $caller) = @_;
-	
-	record($conf, {line => __LINE__, file => $THIS_FILE, level => 4, message => "caller: [$caller]\n"});
-	if ($caller eq "striker")
-	{
-		summarize_initial_striker_configuration($conf);
-	}
-	elsif ($caller eq "monitor")
-	{
-		summarize_initial_monitor_configuration($conf);
-	}
-	
-	return(0);
-}
-
-# If the configuration file does not yet exist, it will trigger the initial
-# installation of the system.
-sub initial_configuration
-{
-	my ($conf, $caller) = @_;
-	
-	if ($caller eq "striker")
-	{
-		# Read any install-specific CGI variables.
-		get_cgi_vars($conf, [
-			"config_name",
-			"language",
-			"system_name",
-			"interfaces",
-			"defroute",
-			"striker_user",
-			"striker_password",
-			"striker_db_name",
-			"striker_db_user",
-			"striker_db_password",
-			"org_name",
-			"summary",
-		]);
-		
-		initial_striker_configuration($conf);
-	}
-	elsif ($caller eq "monitor")
-	{
-		initial_monitor_configuration($conf);
-	}
-	
-	return(0);
-}
-
-# This is run when the host system is determined to be a 'striker' dashboard 
-# and has not been configured. When done, it will create the configuration 
-# file. The existance of that file prevents this from running again.
-sub initial_monitor_configuration
-{
-	my ($conf) = @_;
-	
-	# Build the language select input.
-	my $language_options = get_languages($conf);
-	my $select_language = build_html_select($conf, {
-		select_name	=>	"language",
-		select_id	=>	"language",
-		selected_option	=>	$conf->{cgi}{language},
-		blank_option	=>	0,
-		options		=>	$language_options,
-		attributes	=>	"onselect='null()'",
-	});
-	
-	$conf->{cgi}{db_name}     = $conf->{db}{name}     if not $conf->{cgi}{db_name};
-	$conf->{cgi}{db_user}     = $conf->{db}{user}     if not $conf->{cgi}{db_user};
-	$conf->{cgi}{db_password} = $conf->{db}{password} if not $conf->{cgi}{db_password};
-	
-	# This collects the network interface information
-	#my ($nic_replace) = gather_network_interface_info($conf);
-	### TODO: Make this configure a node's full network stack
-	my $nic_replace = "";
-	
-	# Print the template.
-	my $variables = {};
-	my $replace   = {
-		language_select	=>	$select_language,
-		nic_form	=>	$nic_replace,
-	};
-	print template($conf, "monitor", "welcome", $variables, $replace);
-	
-	return(0);
-}
-
-# This summarizes the user's striker configuration for data and asks them to
-# confirm before proceeding.
-sub summarize_initial_striker_configuration
-{
-	my ($conf) = @_;
-	record($conf, {line => __LINE__, file => $THIS_FILE, level => 4, message => "-> summarize_initial_striker_configuration()\n"});
-	
-	# Print the template.
-	my $language_options = get_languages($conf);
-	my $select_language = build_html_select($conf, {
-		select_name	=>	"language",
-		select_id	=>	"language",
-		selected_option	=>	$conf->{cgi}{language},
-		blank_option	=>	0,
-		options		=>	$language_options,
-		attributes	=>	"onselect='null()'",
-	});
-	record($conf, {line => __LINE__, file => $THIS_FILE, level => 4, message => "select_language: [$select_language]\n"});
-	
-	my ($nic_replace) = gather_network_interface_info($conf, "summarize");
-	my $variables = {};
-	my $replace   = {
-		language_select	=>	$select_language,
-		nic_form	=>	$nic_replace,
-	};
-	print template($conf, "install", "summarize", $variables, $replace);
-	
-	return(0);
-}
-
-# This is run when the host system is determined to be a 'striker' dashboard 
-# and has not been configured. When done, it will create the configuration 
-# file. The existance of that file prevents this from running again.
-sub initial_striker_configuration
-{
-	my ($conf) = @_;
-	
-	# Build the language select input.
-	my $language_options = get_languages($conf);
-	my $select_language = build_html_select($conf, {
-		select_name	=>	"language",
-		select_id	=>	"language",
-		selected_option	=>	$conf->{cgi}{language},
-		blank_option	=>	0,
-		options		=>	$language_options,
-		attributes	=>	"onselect='null()'",
-	});
-	
-	if (not $conf->{cgi}{system_timezone})
-	{
-		$conf->{cgi}{system_timezone} = $conf->{sys}{system_timezone};
-	}
-	my $system_timezone = build_timezone_select($conf, {
-		select_name	=>	"system_timezone",
-		select_id	=>	"system_timezone",
-		selected_option	=>	$conf->{cgi}{system_timezone},
-		blank_option	=>	0,
-		attributes	=>	"",
-	});
-	
-	# Call the 'gather-system-info' tool
-	call_gather_system_info($conf);
-	
-	# This collects the network interface information
-	my ($nic_replace) = gather_network_interface_info($conf, "initial");
-	
-	# If there is no hostname in {cgi} yet, set it to the hostname read by
-	# gather-system-ingo.
-	#print "<pre>cgi::system_name: [$conf->{cgi}{system_name}], sys::hostname: [$conf->{sys}{hostname}]</pre>\n";
-	if ((not $conf->{cgi}{system_name}) && ($conf->{sys}{hostname}))
-	{
-		$conf->{cgi}{system_name} = $conf->{sys}{hostname};
-	}
-	
-	# Print the template.
-	my $variables = {};
-	my $replace   = {
-		language_select	=>	$select_language,
-		nic_form	=>	$nic_replace,
-		system_timezone	=>	$system_timezone,
-	};
-	print template($conf, "install", "welcome", $variables, $replace);
-	
-	exit(0);
-}
-
 # At this point in time, all this does is print the content type needed for
 # printing to browsers.
 sub initialize_http
@@ -1567,6 +1391,10 @@ sub record
 			$conf->{handles}{'log'} = $fh;
 			my $current_dir         = get_current_directory($conf);
 			my $log_file            = $current_dir."/".$conf->{path}{log_file};
+			if ($conf->{path}{log_file} =~ /^\//)
+			{
+				$log_file = $conf->{path}{log_file};
+			}
 			my ($date, $time)       = get_date_and_time($conf);
 			open ($fh, ">>$log_file") or hard_die($conf, $THIS_FILE, __LINE__, 13, "Unable to open the file: [$log_file] for writing. The error was: $!.\n");
 			print $fh "======\nLog opened on $date at $time\n";
@@ -1838,108 +1666,10 @@ sub process_string_restore_escape_variables
 	return($string);
 }
 
-# Read in the configuration file. If the file doesn't exist, initial setup will
-# be triggered.
-sub read_configuration_file
-{
-	my ($conf, $caller) = @_;
-	
-	if (not -e $conf->{path}{config_file})
-	{
-		# The use might be saving the new values. Read the CGI 
-		# variables now and check.
-		record($conf, {line => __LINE__, file => $THIS_FILE, level => 2, message => "reading vars\n"});
-		get_cgi_vars($conf, [
-			"config_name",
-			"defroute",
-			"interfaces",
-			"language",
-			"org_name",
-			"save",
-			"striker_db_name",
-			"striker_db_password",
-			"striker_db_user",
-			"striker_user",
-			"striker_password",
-			"summary",
-			"system_name",
-			"system_timezone",
-		]);
-		
-		record($conf, {line => __LINE__, file => $THIS_FILE, level => 4, message => "cgi::summary: [$conf->{cgi}{summary}]\n"});
-		if ($conf->{cgi}{summary})
-		{
-			summarize_initial_configuration($conf, $caller);
-		}
-		elsif ($conf->{cgi}{save})
-		{
-			write_config($conf, $caller);
-		}
-		else
-		{
-			# Must be a new install.
-			initial_configuration($conf, $caller);
-		}
-	}
-	else
-	{
-		my $read  = IO::Handle->new();
-		my $shell_call = "$conf->{file}{config}";
-		# This is causing a loop... can't call 'error' this early.
-		open ($read, $shell_call) or hard_die($conf, $THIS_FILE, __LINE__, 1, "Failed to read: [$shell_call]. The error was: $!\n");
-		binmode $read, ":utf8:";
-		while (<$read>)
-		{
-			chomp;
-			my $line = $_;
-			
-			# Protect '#!....!#' substitution variables.
-			$line =~ s/#!/_!\|/;
-			$line =~ s/!#/\|!_/;
-			
-			# Now remove anything after a hash
-			$line =~ s/#(.*)//;
-			
-			# And restore the substitution variables.
-			$line =~ s/_!\|/#!/;
-			$line =~ s/\|!_/!#/;
-			
-			# Skip lines without an = sign... no idea why they'd
-			# be here.
-			next if ($line !~ /=/);
-			
-			# Split on the first = sign
-			my ($variable, $value) = split/=/, $line, 2;
-			
-			# Crop leading and trailing spaces from the variables
-			# and values.
-			$variable =~ s/^\s+//;
-			$variable =~ s/\s+$//;
-			$value    =~ s/^\s+//;
-			$value    =~ s/\s+$//;
-
-			# Check if the variable needs to be split on '::' and
-			# stored in multi-dimensional hashes.
-			if ( $variable =~ /::/ )
-			{
-				_make_hash_reference($conf, $variable, $value);
-			}
-			else
-			{
-				# Simple variable, I can just store it's value.
-				$conf->{$variable} = $value;
-			}
-		}
-		$read->close();
-	}
-	
-	return(0);
-}
-
 # This reads in the strings XML file.
 sub read_strings
 {
-	my ($conf, $caller) = @_;
+	my ($conf, $file) = @_;
 	
 	my $string_ref = $conf;
 
@@ -1952,7 +1682,7 @@ sub read_strings
 	my $key_name    = "";	# This is a double-colon list of hash keys used to build each hash element.
 	
 	my $read        = IO::Handle->new;
-	my $shell_call  = "<$conf->{path}{languages}";
+	my $shell_call  = "<$file";
 	open ($read, $shell_call) or die hard_die($conf, $THIS_FILE, __LINE__, 1, "Failed to read: [$shell_call]. The error was: $!\n");
 	if ($conf->{strings}{force_utf8})
 	{

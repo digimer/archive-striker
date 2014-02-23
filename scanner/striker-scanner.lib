@@ -3,6 +3,8 @@
 use strict;
 use warnings;
 
+# Set static variables.
+my $THIS_FILE = "striker-scanner.lib";
 
 # This initializes a call; reads variables, etc.
 sub initialize
@@ -13,7 +15,8 @@ sub initialize
 	my ($conf) = initialize_conf($caller);
 
 	# First up, read in the default strings file.
-	read_strings($conf, $caller);
+	read_strings($conf, $conf->{path}{words_common});
+	read_strings($conf, $conf->{path}{words_file});
 
 	# Read in the configuration file. If the file doesn't exist, initial 
 	# setup will be triggered.
@@ -30,8 +33,9 @@ sub initialize_conf
 	my $conf = {
 		path				=>	{
 			config_file			=>	"/etc/an/striker.conf",
-			languages			=>	"./striker-scanner.xml",
 			log_file			=>	"/var/log/striker-scanner.log",
+			words_common			=>	"./common.xml",
+			words_file			=>	"./striker-scanner.xml",
 		},
 		# These are setuid root C-wrapper scripts that allow apache to
 		# make system calls as root.
@@ -67,6 +71,83 @@ sub initialize_conf
 	};
 	
 	return($conf);
+}
+
+# If the configuration file does not yet exist, it will trigger the initial
+# installation of the system.
+sub initial_configuration
+{
+	my ($conf, $caller) = @_;
+	
+	print "\n", get_string($conf, {key => 'install_0000', variables => {config_file => $conf->{path}{config_file}}}), "\n\n";
+	
+	return(0);
+}
+
+# Read in the configuration file. If the file doesn't exist, initial setup will
+# be triggered.
+sub read_configuration_file
+{
+	my ($conf, $caller) = @_;
+	
+	if (not -e $conf->{path}{config_file})
+	{
+		# Must be a new install.
+		initial_configuration($conf, $caller);
+	}
+	else
+	{
+		my $read  = IO::Handle->new();
+		my $shell_call = "$conf->{file}{config}";
+		# This is causing a loop... can't call 'error' this early.
+		open ($read, $shell_call) or hard_die($conf, $THIS_FILE, __LINE__, 1, "Failed to read: [$shell_call]. The error was: $!\n");
+		binmode $read, ":utf8:";
+		while (<$read>)
+		{
+			chomp;
+			my $line = $_;
+			
+			# Protect '#!....!#' substitution variables.
+			$line =~ s/#!/_!\|/;
+			$line =~ s/!#/\|!_/;
+			
+			# Now remove anything after a hash
+			$line =~ s/#(.*)//;
+			
+			# And restore the substitution variables.
+			$line =~ s/_!\|/#!/;
+			$line =~ s/\|!_/!#/;
+			
+			# Skip lines without an = sign... no idea why they'd
+			# be here.
+			next if ($line !~ /=/);
+			
+			# Split on the first = sign
+			my ($variable, $value) = split/=/, $line, 2;
+			
+			# Crop leading and trailing spaces from the variables
+			# and values.
+			$variable =~ s/^\s+//;
+			$variable =~ s/\s+$//;
+			$value    =~ s/^\s+//;
+			$value    =~ s/\s+$//;
+
+			# Check if the variable needs to be split on '::' and
+			# stored in multi-dimensional hashes.
+			if ( $variable =~ /::/ )
+			{
+				_make_hash_reference($conf, $variable, $value);
+			}
+			else
+			{
+				# Simple variable, I can just store it's value.
+				$conf->{$variable} = $value;
+			}
+		}
+		$read->close();
+	}
+	
+	return(0);
 }
 
 1;
