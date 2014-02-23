@@ -20,21 +20,7 @@ will also allow changing the password for the interface login.
 Installation (raw, unfinished, unedited);
 (╯°□°）╯︵ ┻━┻
 
-yum -y install cpan perl-YAML-Tiny perl-Net-SSLeay gcc make perl-CGI fence-agents syslinux openssl-devel postgresql-server postgresql-plperl httpd
-yum -y groupinstall development
-sed -i 's/SELINUX=.*/SELINUX=disabled/' /etc/selinux/config
-setenforce 0
-chkconfig iptables off
-chkconfig ip6tables off
-/etc/init.d/iptables stop
-/etc/init.d/ip6tables stop
- 
-# Automate the install of the perl modules.
-export PERL_MM_USE_DEFAULT=1
-perl -MCPAN -e 'install("YAML")'
-perl -MCPAN -e 'install Moose::Role'
-perl -MCPAN -e 'install Throwable::Error'
-perl -MCPAN -e 'install Email::Sender::Transport::SMTP::TLS'
+
 
 # Apache setup
 mkdir /var/www/home
