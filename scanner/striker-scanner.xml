@@ -3,6 +3,12 @@
 	<!-- Canadian English -->
 	<lang name="en_CA" long_name="English (Canadian)">
 		<key name="comment">Maintained by Madison Kelly (mkelly@alteeve.ca) for Striker.</key>
+		<!-- Generic Words -->
+		<key name="answer_0000">Yes</key>
+		<key name="answer_0001">Y</key>	<!-- Short for 'answer_0000' -->
+		<key name="answer_0002">No</key>
+		<key name="answer_0003">N</key>	<!-- Short for 'answer_0002' -->
+		
 		<!-- Installation/Configuration dialoge -->
 		<key name="install_0000">
 -=] Striker Monitor
@@ -53,12 +59,53 @@ db::password	=	#!var!db::password!#
 	<lang name="ja" long_name="日本語">
 		<lang_comment>Madison Kelly、(mkelly@alteeve.ca)はStrikerのメッセージを維持しています。</lang_comment>
 		<!-- Installation messages -->
-	</lang>
+		<key name="answer_0000">はい</key>
+		<key name="answer_0001">Y</key>	<!-- Short for 'answer_0000' -->
+		<key name="answer_0002">いいえ</key>
+		<key name="answer_0003">N</key>	<!-- Short for 'answer_0002' -->
+		
+		<key name="install_0000">
+-=] Striker Monitor
 
-	<!-- French -->
-	<lang name="fr" long_name="Français">
-		<lang_comment>Géré par Madison Kelly (mkelly@alteeve.ca) pour Striker.</lang_comment>
-		<!-- Installation messages -->
-		<key name="install_0001">l'installation de Striker</key>
+コンフィギュレーション·ファイル[#!var!config_file!#]が見つかりません。
+インストールの開始。
+		</key>
+		<key name="install_0001">
+これはあなたが望むものであることをご確認ください。
+==============================================================================
+#!string!install_0002!#
+==============================================================================
+NOTE: 入力したパスワードは、ファイルに書き込まれます。
+[#!conf!path::config_file!#]に書き込み? (Y/n): 
+		</key>
+		<key name="install_0002">
+### Striker - Scanner
+# コンフィギュレーション·ファイル。
+
+# Pg == PostgreSQL
+# (他のSQLサーバーがまだ対応していません。)
+db::type	=	#!var!db::type!#
+
+# SQL Serverホストのホスト名またはIPアドレス。
+db::server	=	#!var!db::server!#
+
+# TCPポートは、SQLサーバーへの接続に使用される。
+db::port	=	#!var!db::port!#
+
+# 「Striker」で使用されるデータベース名。
+db::name	=	#!var!db::name!#
+
+# データベース·ユーザー名。
+db::username	=	#!var!db::user!#
+
+# データベース·ユーザーのパスワード。
+db::password	=	#!var!db::password!#
+		</key>
+		<key name="install_0003">データベースのどのタイプ？ (#!var!answer!#): </key>
+		<key name="install_0004">名またはデータベース·サーバーのIPをホスト？ (#!var!answer!#): </key>
+		<key name="install_0005">TCPポートは、データベースに接続するために使用？ (#!var!answer!#): </key>
+		<key name="install_0006">データベースの名前？ (#!var!answer!#): </key>
+		<key name="install_0007">としてデータベースに接続するためのユーザー？ (#!var!answer!#): </key>
+		<key name="install_0008">データベース·ユーザーに使用するパスワード？ </key>
 	</lang>
 </string>

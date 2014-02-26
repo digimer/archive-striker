@@ -84,6 +84,11 @@ sub initial_configuration
 	# Tell the user we are starting.
 	print "\n", get_wrapped_string($conf, {key => 'install_0000', variables => {config_file => $conf->{path}{config_file}}}), "\n\n";
 	
+	my $yes_answer  = get_string($conf, {key => 'answer_0000'});
+	my $yes_short   = get_string($conf, {key => 'answer_0001'});
+	my $no_answer   = get_string($conf, {key => 'answer_0002'});
+	my $no_short    = get_string($conf, {key => 'answer_0003'});
+	my $language    = $conf->{sys}{language};
 	my $db_type     = "Pg";
 	my $db_server   = "localhost";
 	my $db_port     = 5432;
@@ -145,7 +150,8 @@ sub initial_configuration
 		}});
 		my $save = <STDIN>;
 		chomp($save);
-		if ((lc($save) eq "y") or (lc($save) eq "yes"))
+		print "save: [$save], yes_answer: [$yes_answer], yes_short: [$yes_short]\n";
+		if ((lc($save) eq lc($yes_answer)) or (lc($save) eq lc($yes_short)))
 		{
 			print "Saved\n";
 			last;
