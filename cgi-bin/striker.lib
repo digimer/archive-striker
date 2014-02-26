@@ -42,6 +42,7 @@ sub initialize_conf
 			config_file			=>	"/etc/an/striker.conf",
 			log_file			=>	"../logs/striker.log",
 			skins				=>	"../html/skins/",
+			tput				=>	"/usr/bin/tput",
 			words_common			=>	"./common.xml",
 			words_file			=>	"./strings.xml",
 		},
@@ -62,6 +63,7 @@ sub initialize_conf
 			time_seperator			=>	":",
 			log_language			=>	"en_CA",
 			system_timezone			=>	"America/Toronto",
+			output				=>	"web",
 		},
 		db				=>	{
 			name				=>	"an-${caller}",
@@ -307,4 +309,33 @@ sub initial_striker_configuration
 	exit(0);
 }
 
+# This writes out the initial config file for striker or monitor.
+sub write_config
+{
+	my ($conf, $caller) = @_;
+	
+	# Make sure the user isn't re-running this.
+	if (-e $conf->{path}{config_file})
+	{
+		# Bail out.
+		
+	}
+	else
+	{
+		# Write the file.
+		my $shell_call  = $conf->{path}{config_file};
+		my $file_handle = IO::Handle->new();
+		open ($file_handle, ">>$shell_call") or hard_die($conf, $THIS_FILE, __LINE__, 14, "Failed to write the config file: [$shell_call]. The error was: $!\n");
+		binmode $file_handle, ":utf8:";
+		my $config = get_string($conf, {key => "config_0001", variables => {
+			db_name		=>	$conf->{cgi}{db_name},
+			db_user		=>	$conf->{cgi}{db_user},
+			db_password	=>	$conf->{cgi}{db_password},
+		}});
+		print $file_handle 
+		$file_handle->close();
+	}
+	
+	return(0);
+}
 1;

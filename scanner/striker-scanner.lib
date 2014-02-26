@@ -34,6 +34,7 @@ sub initialize_conf
 		path				=>	{
 			config_file			=>	"/etc/an/striker.conf",
 			log_file			=>	"/var/log/striker-scanner.log",
+			tput				=>	"/usr/bin/tput",
 			words_common			=>	"./common.xml",
 			words_file			=>	"./striker-scanner.xml",
 		},
@@ -54,6 +55,7 @@ sub initialize_conf
 			time_seperator			=>	":",
 			log_language			=>	"en_CA",
 			system_timezone			=>	"America/Toronto",
+			output				=>	"text",
 		},
 		db				=>	{
 			name				=>	"striker",
@@ -79,7 +81,82 @@ sub initial_configuration
 {
 	my ($conf, $caller) = @_;
 	
-	print "\n", get_string($conf, {key => 'install_0000', variables => {config_file => $conf->{path}{config_file}}}), "\n\n";
+	# Tell the user we are starting.
+	print "\n", get_wrapped_string($conf, {key => 'install_0000', variables => {config_file => $conf->{path}{config_file}}}), "\n\n";
+	
+	my $db_type     = "Pg";
+	my $db_server   = "localhost";
+	my $db_port     = 5432;
+	my $db_name     = "striker-scanner";
+	my $db_user     = "alteeve";
+	my $db_password = "";
+	while (1)
+	{
+		# As the database type (disabled for now)
+		#print get_wrapped_string($conf, {key => 'install_0003', variables => { answer => "$db_type_answer"}}), "\n";
+		#my $db_type_answer = <STDIN>;
+		#chomp($db_type_answer);
+		#$db_type = $db_type_answer if $db_type_answer;
+		
+		# Ask for the database server hostname or IP
+		print get_wrapped_string($conf, {key => 'install_0004', variables => { answer => "$db_server"}});
+		my $db_server_answer = <STDIN>;
+		chomp($db_server_answer);
+		$db_server = $db_server_answer if $db_server_answer;
+		print " - $db_server\n";
+		
+		# Ask for the database TCP port
+		print get_wrapped_string($conf, {key => 'install_0005', variables => { answer => "$db_port"}});
+		my $db_port_answer = <STDIN>;
+		chomp($db_port_answer);
+		$db_port = $db_port_answer if $db_port_answer;
+		print " - $db_port\n";
+		
+		# Ask for the database name.
+		print get_wrapped_string($conf, {key => 'install_0006', variables => { answer => "$db_name"}});
+		my $db_name_answer = <STDIN>;
+		chomp($db_name_answer);
+		$db_name = $db_name_answer if $db_name_answer;
+		print " - $db_name\n";
+		
+		# Ask for the database user.
+		print get_wrapped_string($conf, {key => 'install_0007', variables => { answer => "$db_user"}});
+		my $db_user_answer = <STDIN>;
+		chomp($db_user_answer);
+		$db_user = $db_user_answer if $db_user_answer;
+		print " - $db_user\n";
+		
+		# Ask for the database password.
+		print get_wrapped_string($conf, {key => 'install_0008'});
+		ReadMode('noecho');
+		my $db_password_answer = <STDIN>;
+		ReadMode('restore');
+		chomp($db_password_answer);
+		$db_password = $db_password_answer if $db_password_answer;
+		print "\n - ****\n";
+		
+		print "\n", get_wrapped_string($conf, {key => 'install_0001', variables => {
+			'db::type'	=>	"$db_type",
+			'db::server'	=>	"$db_server",
+			'db::port'	=>	"$db_port",
+			'db::name'	=>	"$db_name",
+			'db::user'	=>	"$db_user",
+			'db::password'	=>	"****",
+		}});
+		my $save = <STDIN>;
+		chomp($save);
+		if ((lc($save) eq "y") or (lc($save) eq "yes"))
+		{
+			print "Saved\n";
+			last;
+		}
+		else
+		{
+			print "Restarting.\n\n";
+		}
+	}
+	
+	#write_config($conf);
 	
 	return(0);
 }
@@ -146,6 +223,16 @@ sub read_configuration_file
 		}
 		$read->close();
 	}
+	
+	return(0);
+}
+
+# This writes out an initial configuration file.
+sub write_config
+{
+	my ($conf) = @_;
+	
+	
 	
 	return(0);
 }

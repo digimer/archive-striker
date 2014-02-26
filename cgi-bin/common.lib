@@ -1252,10 +1252,12 @@ sub get_languages
 sub get_string
 {
 	my ($conf, $vars) = @_;
+	#print __LINE__."; vars: [$vars]\n";
 	
 	my $key       = $vars->{key};
 	my $language  = $vars->{language}  ? $vars->{language}  : $conf->{sys}{language};
 	my $variables = $vars->{variables} ? $vars->{variables} : "";
+	#print __LINE__."; 1. key: [$key], language: [$language], variables: [$variables]\n";
 	
 	if (not $key)
 	{
@@ -1270,6 +1272,7 @@ sub get_string
 		hard_die($conf, $THIS_FILE, __LINE__, 4, "The language key: [$language] does not exist in the 'strings.xml' file.\n");
 	}
 	my $say_language = $language;
+	#print __LINE__."; 2. say_language: [$say_language]\n";
 	if ($conf->{string}{lang}{$language}{lang}{long_name})
 	{
 		$say_language = "$language ($conf->{string}{lang}{$language}{lang}{long_name})";
@@ -1286,20 +1289,32 @@ sub get_string
 	
 	# Grab the string and start cleaning it up.
 	my $string = $conf->{string}{lang}{$language}{key}{$key}{content};
-	#print __LINE__."; >> string: [$string]\n";
+	#print __LINE__."; 3. string: [$string]\n";
 	
 	# This clears off the new-line and trailing white-spaces caused by the
 	# indenting of the '</key>' field in the words XML file when printing
 	# to the command line.
 	$string =~ s/^\n//;
 	$string =~ s/\n(\s+)$//;
-	#print __LINE__."; == string: [$string]\n";
+	#print __LINE__."; 4. string: [$string]\n";
 	
 	# Process all the #!...!# escape variables.
+	#print __LINE__."; 5. string: [$string], variables: [$variables]\n";
 	($string) = process_string($conf, $string, $variables);
-	#print __LINE__."; << string: [$string]\n";
+	#print __LINE__."; 6. string: [$string]\n";
 	
 	#print "$THIS_FILE ".__LINE__."; key: [$key], language: [$language]\n";
+	return($string);
+}
+
+# This is a wrapper for 'get_string' that simply calls 'wrap_string()' before returning.
+sub get_wrapped_string
+{
+	my ($conf, $vars) = @_;
+	
+	#print __LINE__."; vars: [$vars]\n";
+	my $string = wrap_string($conf, get_string($conf, $vars));
+	
 	return($string);
 }
 
@@ -1341,10 +1356,11 @@ sub insert_variables_into_string
 	my ($conf, $string, $variables) = @_;
 	
 	my $i = 0;
+	#print "$THIS_FILE ".__LINE__."; string: [$string], variables: [$variables]\n";
 	while ($string =~ /#!var!(.+?)!#/s)
 	{
 		my $variable = $1;
-		#print "$THIS_FILE ".__LINE__."; variable [$i]: [$variables->[$i]]\n";
+		#print "$THIS_FILE ".__LINE__."; variable [$variable]: [$variables->{$variable}]\n";
 		if (not defined $variables->{$variable})
 		{
 			# I can't expect there to always be a defined value in
@@ -1500,18 +1516,20 @@ sub translate_mac_to_vendor
 sub process_string
 {
 	my ($conf, $string, $variables) = @_;
+	#print __LINE__."; i. string: [$string], variables: [$variables]\n";
 	
 	# Insert variables into #!var!x!# 
 	my $i = 0;
 	#print __LINE__."; >> string: [$string]\n";
 	#print __LINE__."; [$i], 1.\n";
 	($string) = insert_variables_into_string($conf, $string, $variables);
+	#print __LINE__."; ii. string: [$string]\n";
 	
 	while ($string =~ /#!(.+?)!#/s)
 	{
 		# Insert strings that are referenced in this string.
 		#print __LINE__."; [$i], 2.\n";
-		($string) = process_string_insert_strings($conf, $string);
+		($string) = process_string_insert_strings($conf, $string, $variables);
 		
 		# Protect unmatchable keys.
 		#print __LINE__."; [$i], 3.\n";
@@ -1544,17 +1562,20 @@ sub process_string
 # This looks for #!string!...!# substitution variables.
 sub process_string_insert_strings
 {
-	my ($conf, $string) = @_;
+	my ($conf, $string, $variables) = @_;
 	
+	#print __LINE__."; A. string: [$string], variables: [$variables]\n";
 	while ($string =~ /#!string!(.+?)!#/)
 	{
 		my $key        = $1;
+		#print __LINE__."; B. key: [$key]\n";
 		# I don't insert variables into strings here. If a complex
 		# string is needed, the user should process it and pass the
 		# completed string to the template function as a
 		# #!replace!...!# substitution variable.
 		#print __LINE__."; >>> string: [$string]\n";
-		my $say_string = get_string($conf, {key => $key});
+		my $say_string = get_string($conf, {key => $key, variables => $variables});
+		#print __LINE__."; C. say_string: [$key]\n";
 		if ($say_string eq "")
 		{
 			$string =~ s/#!string!$key!#/!! [$key] !!/;
@@ -1901,36 +1922,100 @@ sub read_strings
 	return(0);
 }
 
-# This writes out the initial config file for striker or monitor.
-sub write_config
+# This wraps the passed screen to the current screen width. Assumes output of
+# to text/command line.
+sub wrap_string
 {
-	my ($conf, $caller) = @_;
+	my ($conf, $string) = @_;
 	
-	# Make sure the user isn't re-running this.
-	if (-e $conf->{path}{config_file})
+	my $wrap_to = get_screen_width($conf);
+	
+	# No sense proceeding if the string is empty.
+	return ($string) if not $string;
+	
+	# No sense proceeding if there isn't a length to wrap to.
+	return ($string) if not $wrap_to;
+
+	# When the string starts with certain borders, try to make it look
+	# better by indenting the wrapped portion(s) an appropriate number
+	# of spaces and put in a border where it seems needed.
+	my $prefix_spaces = "";
+	if ( $string =~ /^\[ (.*?) \] - / )
 	{
-		# Bail out.
-		
+		my $prefix      = "[ $1 ] - ";
+		my $wrap_spaces = length($prefix);
+		for (1..$wrap_spaces)
+		{
+			$prefix_spaces .= " ";
+		}
 	}
-	else
+	# If the line has spaces at the start, maintain those spaces for
+	# wrapped lines.
+	elsif ( $string =~/^(\s+)/ )
 	{
-		# Write the file.
-		my $shell_call  = $conf->{path}{config_file};
-		my $file_handle = IO::Handle->new();
-		open ($file_handle, ">>$shell_call") or hard_die($conf, $THIS_FILE, __LINE__, 14, "Failed to write the config file: [$shell_call]. The error was: $!\n");
-		binmode $file_handle, ":utf8:";
-		my $config = get_string($conf, {key => "config_0001", variables => {
-			db_name		=>	$conf->{cgi}{db_name},
-			db_user		=>	$conf->{cgi}{db_user},
-			db_password	=>	$conf->{cgi}{db_password},
-		}});
-		print $file_handle 
-		$file_handle->close();
+		# We have some number of white spaces.
+		my $prefix     =  $1;
+		my $say_prefix =  $prefix;
+		$say_prefix    =~ s/\t/\\t/g;
+		my $wrap_spaces = length($prefix);
+		for (1..$wrap_spaces)
+		{
+			$prefix_spaces.=" ";
+		}
 	}
 	
-	return(0);
+	my @words          = split/ /, $string;
+	my $wrapped_string = "";
+	my $this_line;
+	for (my $i=0; $i<@words; $i++)
+	{
+		# Store the line as it was before in case the next word pushes line line past the 'wrap_to' value.
+		my $last_line =  $this_line;
+		$this_line    .= $words[$i];
+		my $length    =  0;
+		if ($this_line)
+		{
+			$length = length($this_line);
+		}
+		if ((not $last_line) && ($length >= $wrap_to))
+		{
+			# This one 'word' is longer than the width of the screen so just pass it along.
+			$wrapped_string .= $words[$i]."\n";
+			$this_line      =  "";
+		}
+		elsif (length($this_line) > $wrap_to)
+		{
+			$last_line      =~ s/\s+$/\n/;
+			$wrapped_string .= $last_line;
+			$this_line      =  $prefix_spaces.$words[$i]." ";
+		}
+		else
+		{
+			$this_line.=" ";
+		}
+	}
+	$wrapped_string .= $this_line;
+	$wrapped_string =~ s/\s+$//;
+	
+	return($string);
 }
 
+# Get the current number of colums for the user's terminal.
+sub get_screen_width
+{
+	my ($conf) = @_;
+	
+	my $cols = 0;
+	open my $file_handle, '-|', "$conf->{path}{tput}", "cols" or die "Failed to call: [$conf->{path}{tput} cols]\n";
+	while (<$file_handle>)
+	{
+		chomp;
+		$cols = $_;
+	}
+	$file_handle->close();
+	
+	return($cols);
+}
 
 ###############################################################################
 ### Private functions                                                       ###

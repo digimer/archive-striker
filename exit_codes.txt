@@ -12,9 +12,10 @@
 9   = * Infitie loop detected while restoring protected escape variables in the displayed string. If this is triggered erroneously, increase the 'sys::error_limit' value.
 10  = * The specified template file was not found.
 11  = * The specified template file is not readable by the specified user.
-12  = * Infitie loop detected while replacing '#!replace!...!#' replacement variables in the specified template. If this is triggered erroneously, increase the 'sys::error_limit' value.
+12  = * Infinit loop detected while replacing '#!replace!...!#' replacement variables in the specified template. If this is triggered erroneously, increase the 'sys::error_limit' value.
 13  = * Failed to write to the specified file. Error reason as returned by the OS should be displayed.
 14  = * Failed to call the setuid root 'call_gather-system-info' C-wrapper.
+15  = Given shell call failed. Error from the console will be included.
 
 999 = Unknown error. This is usually the sign of a programming error.
 

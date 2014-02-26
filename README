@@ -3,7 +3,7 @@
                                
                               https://alteeve.ca
 
--=] Striker [=-                                                -=] Monitor [=-
+-=] Striker [=-                                                -=] Scanner [=-
 
   This is the next generation "dashboard" and node monitor for 
 Alteeve's Niche!'s "Anvil!" high-availability platform. It will eventually 
@@ -15,3 +15,7 @@ being.
 
 AN!CDB - https://github.com/digimer/an-cdb
 
+Required stuff:
+
+RPMs:
+yum install perl-TermReadKey 
