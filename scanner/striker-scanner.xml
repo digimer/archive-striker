@@ -9,6 +9,8 @@
 		<key name="answer_0002">No</key>
 		<key name="answer_0003">N</key>	<!-- Short for 'answer_0002' -->
 		
+		<key name="prompt_0000">Language?</key>
+		
 		<!-- Installation/Configuration dialoge -->
 		<key name="install_0000">
 -=] Striker Monitor
@@ -63,6 +65,8 @@ db::password	=	#!var!db::password!#
 		<key name="answer_0001">Y</key>	<!-- Short for 'answer_0000' -->
 		<key name="answer_0002">いいえ</key>
 		<key name="answer_0003">N</key>	<!-- Short for 'answer_0002' -->
+		
+		<key name="prompt_0000">単語？</key>
 		
 		<key name="install_0000">
 -=] Striker Monitor

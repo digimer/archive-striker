@@ -81,14 +81,6 @@ sub initial_configuration
 {
 	my ($conf, $caller) = @_;
 	
-	# Tell the user we are starting.
-	print "\n", get_wrapped_string($conf, {key => 'install_0000', variables => {config_file => $conf->{path}{config_file}}}), "\n\n";
-	
-	my $yes_answer  = get_string($conf, {key => 'answer_0000'});
-	my $yes_short   = get_string($conf, {key => 'answer_0001'});
-	my $no_answer   = get_string($conf, {key => 'answer_0002'});
-	my $no_short    = get_string($conf, {key => 'answer_0003'});
-	my $language    = $conf->{sys}{language};
 	my $db_type     = "Pg";
 	my $db_server   = "localhost";
 	my $db_port     = 5432;
@@ -97,6 +89,47 @@ sub initial_configuration
 	my $db_password = "";
 	while (1)
 	{
+		# Tell the user we are starting.
+		my $yes_answer  = get_string($conf, {key => 'answer_0000'});
+		my $yes_short   = get_string($conf, {key => 'answer_0001'});
+		my $no_answer   = get_string($conf, {key => 'answer_0002'});
+		my $no_short    = get_string($conf, {key => 'answer_0003'});
+		my $lang_prompt = get_string($conf, {key => 'prompt_0000'});
+		my $language    = $conf->{sys}{language};
+		system 'clear';
+		print "\n", get_wrapped_string($conf, {key => 'install_0000', variables => {config_file => $conf->{path}{config_file}}}), "\n\n";
+		
+		# Let the user choose a language.
+		my $i = 1;
+		my @languages;
+		my $default_language;
+		foreach my $language (sort {$a cmp $b} keys %{$conf->{string}{lang}})
+		{
+			if ($language eq $conf->{sys}{language})
+			{
+				$default_language = $i;
+			}
+			my $say_language = $language;
+			if ($conf->{string}{lang}{$language}{lang}{long_name})
+			{
+				$say_language = "$language ($conf->{string}{lang}{$language}{lang}{long_name})";
+			}
+			print "$i: $say_language\n";
+			$languages[$i] = $language;
+			$i++;
+		}
+		print "$lang_prompt ($default_language: $conf->{sys}{language}): ";
+		my $language_answer = <STDIN>;
+		chomp($language_answer);
+		if ($language_answer)
+		{
+			$conf->{sys}{language} = $languages[$language_answer];
+			next;
+		}
+		else
+		{
+			print "\n";
+		}
 		# As the database type (disabled for now)
 		#print get_wrapped_string($conf, {key => 'install_0003', variables => { answer => "$db_type_answer"}}), "\n";
 		#my $db_type_answer = <STDIN>;
