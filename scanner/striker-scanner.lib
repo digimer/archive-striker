@@ -13,7 +13,6 @@ sub call_agents
 	
 	my $full_path =  get_current_directory($conf);
 	   $full_path .= "/scan.d/";
-	print "Calling agents in: [$full_path]\n";
 	local(*DIRECTORY);
 	opendir(DIRECTORY, $full_path);
 	while(my $file = readdir(DIRECTORY))
@@ -23,7 +22,78 @@ sub call_agents
 		# Skip anything with an extension.
 		next if $file =~ /\./;
 		my $this_path = $full_path.$file;
-		print "Calling: [$this_path]\n";
+		call_specific_agent($conf, $this_path);
+	}
+	
+	return(0);
+}
+
+# This calls a specific agent
+sub call_specific_agent
+{
+	my ($conf, $agent) = @_;
+	
+	print "calling: [$agent]\n";
+	my $file_handle = IO::Handle->new();
+	open ($file_handle, "$agent 2>&1 |") or soft_die($conf, $THIS_FILE, __LINE__, 16, 
+							template($conf, "./striker-scanner.template", "soft-die", {}, {
+								message	=>	get_wrapped_string($conf, {
+									key		=>	'error_0004', 
+									variables	=>	{
+										agent		=>	$agent,
+										system_error	=>	$!
+									}
+								})
+							})
+						);
+	my $agent_name;
+	my $in_xml;
+	my $xml_version;
+	my $xml_contents;
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		next if not $line;
+		next if $line =~ /^\s+$/;
+		if ($line =~ /Striker Agent: (.*)/)
+		{
+			$agent_name = $1;
+		}
+		# No agent name? No want!
+		next if not $agent_name;
+		if ($line =~ /<\?xml version="(.*?)" \?>/)
+		{
+			$xml_version = $1;
+			$in_xml = 1;
+		}
+		if ($line =~ /<scanner /)
+		{
+			$in_xml = 1;
+		}
+		if ($in_xml)
+		{
+			$xml_contents .= "$line\n";
+		}
+		if ($line =~ /<\/scanner>/)
+		{
+			$in_xml = 0;
+			next;
+		}
+		if (not $in_xml)
+		{
+			print "Agent: [$agent_name]: [$line]\n";
+		}
+	}
+	# TODO: Check the exit code.
+	$file_handle->close();
+	
+	if ($agent_name)
+	{
+		print "Agent: [$agent_name] XML:\n";
+		print "===================================\n";
+		print $xml_contents;
+		print "===================================\n";
 	}
 	
 	return(0);

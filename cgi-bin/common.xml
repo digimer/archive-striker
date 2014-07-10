@@ -7,6 +7,7 @@
 		<key name="error_0001">Failed to write the file: [#!variable!config_file!#]. The reported error was: [#!variable!system_error!#].</key>
 		<key name="error_0002">Fatal Error</key>
 		<key name="error_0003">Failed to create the directory: [#!variable!directory!#]. The reported error was: [#!variable!system_error!#].</key>
+		<key name="error_0004">Failed to call the Striker Scanner agent: [#!variable!agent!#]. The reported error was: [#!variable!system_error!#].</key>
 		
 		<!-- Time Zone names -->
 		<key name="tz_africa/abidjan">Africa/Abidjan</key>

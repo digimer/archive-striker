@@ -8,8 +8,15 @@
 use strict;
 use warnings;
 
+# Add the 'scan.d' directory to perl's @INC array so that the libraries can be
+# found.
+my $inc_directory = $ENV{PWD}."/scan.d";
+push @INC, $inc_directory;
 require "scan-common-perl.lib";
 require "storage_mdadm.lib";
+
+# Before anything, tell the caller that this is a Striker agent.
+print "Striker Agent: storage_mdadm\n";
 
 my $conf = initialize();
 get_switches($conf);
@@ -34,3 +41,5 @@ sub initialize
 	# Find the paths of executables that are not fully defined.
 	find_executables($conf);
 }
+
+exit(0);
