@@ -3,6 +3,11 @@
 	<!-- Canadian English -->
 	<lang name="en_CA" long_name="English (Canadian)">
 		<key name="comment">Maintained by Madison Kelly (mkelly@alteeve.ca) for Striker.</key>
+		<!-- Eror strings -->
+		<key name="error_0001">Failed to write the file: [#!variable!config_file!#]. The reported error was: [#!variable!system_error!#].</key>
+		<key name="error_0002">Fatal Error</key>
+		<key name="error_0003">Failed to create the directory: [#!variable!directory!#]. The reported error was: [#!variable!system_error!#].</key>
+		
 		<!-- Time Zone names -->
 		<key name="tz_africa/abidjan">Africa/Abidjan</key>
 		<key name="tz_africa/accra">Africa/Accra</key>

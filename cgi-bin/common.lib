@@ -1310,10 +1310,12 @@ sub get_string
 # This is a wrapper for 'get_string' that simply calls 'wrap_string()' before returning.
 sub get_wrapped_string
 {
-	my ($conf, $vars) = @_;
+	my ($conf, $vars, $variables) = @_;
+	#          ^      \- This functions variables. Rarely set.
+	#          \-------- Variables passed into 'get_string()'.
 	
 	#print __LINE__."; vars: [$vars]\n";
-	my $string = wrap_string($conf, get_string($conf, $vars));
+	my $string = wrap_string($conf, get_string($conf, $vars), $variables);
 	
 	return($string);
 }
@@ -1330,11 +1332,60 @@ sub hard_die
 	$exit_code = 999  if not defined $exit_code;
 	$message   = "?"  if not defined $message;
 	
-	print "<div name=\"hard_die\">\n";
-	print "Fatal error: [<span class=\"code\">$exit_code</span>] in file: [<span class=\"code\">$file</span>] at line: [<span class=\"code\">$line</span>]!<br />\n";
-	print "$message<br />\n";
-	print "Exiting.<br />\n";
-	print "</div>\n";
+	#foreach my $key (sort {$a cmp $b} keys %ENV) { print "Key: [$key]\t->[$ENV{$key}]\n"; }
+	if ($ENV{SHELL})
+	{
+		# Append a line wrap if needed.
+		if ($message !~ /\n$/)
+		{
+			$message .= "\n";
+		}
+		print "Fatal error: [$exit_code] in file: [$file] at line: [$line]!\n";
+		print "=======================================================================\n";
+		print "$message";
+		print "=======================================================================\n";
+		print "Exiting.\n\n";
+	}
+	else
+	{
+		print "<div name=\"hard_die\">\n";
+		print "Fatal error: [<span class=\"code\">$exit_code</span>] in file: [<span class=\"code\">$file</span>] at line: [<span class=\"code\">$line</span>]!<br />\n";
+		print "$message<br />\n";
+		print "Exiting.<br />\n";
+		print "</div>\n";
+	}
+	
+	exit ($exit_code);
+}
+
+# This exits with a translated error code.
+sub soft_die
+{
+	my ($conf, $file, $line, $exit_code, $message) = @_;
+	
+	$file      = "--" if not defined $file;
+	$line      = 0    if not defined $line;
+	$exit_code = 999  if not defined $exit_code;
+	$message   = "?"  if not defined $message;
+	
+	#foreach my $key (sort {$a cmp $b} keys %ENV) { print "Key: [$key]\t->[$ENV{$key}]\n"; }
+	if ($ENV{SHELL})
+	{
+		# Append a line wrap if needed.
+		if ($message !~ /\n$/)
+		{
+			$message .= "\n";
+		}
+		print "$message";
+	}
+	else
+	{
+		print "<div name=\"hard_die\">\n";
+		print "Fatal error: [<span class=\"code\">$exit_code</span>] in file: [<span class=\"code\">$file</span>] at line: [<span class=\"code\">$line</span>]!<br />\n";
+		print "$message<br />\n";
+		print "Exiting.<br />\n";
+		print "</div>\n";
+	}
 	
 	exit ($exit_code);
 }
@@ -1427,13 +1478,28 @@ sub record
 sub template
 {
 	my ($conf, $file, $template, $variables, $replace) = @_;
+
+	# If I am printing to a shell, supress HTML comments marking the
+	# template boundries.
+	my $hide_template_comments = $ENV{SHELL} ? 1 : 0;
 	
 	my @contents;
 	# Down the road, I may want to have different suffixes depending on the
 	# user's environment. For now, it'll always be ".html".
 	my $suffix        = ".html";
-	my $current_dir   = get_current_directory($conf);
-	my $template_file = $current_dir."/".$conf->{path}{skins}."/".$conf->{sys}{skin}."/".$file.$suffix;
+	
+	# If I've been passed a defined directory, use it. Otherwise, build the
+	# path.
+	my $template_file = "";
+	if (($file =~ /^\//) or ($file =~ /^\.\//))
+	{
+		$template_file = $file;
+	}
+	else
+	{
+		my $current_dir   = get_current_directory($conf);
+		   $template_file = $current_dir."/".$conf->{path}{skins}."/".$conf->{sys}{skin}."/".$file.$suffix;
+	}
 	
 	# Make sure the file exists.
 	if (not -e $template_file)
@@ -1477,7 +1543,11 @@ sub template
 	$read->close();
 	
 	# Now parse the contents for replacement keys.
-	my $page = "<!-- Start template: [$template] from file: [$file] -->\n";
+	my $page = "\n";
+	if (not $hide_template_comments)
+	{
+		$page = "<!-- Start template: [$template] from file: [$file] -->\n";
+	}
 	foreach my $string (@contents)
 	{
 		# Replace the '#!replace!...!#' substitution keys.
@@ -1491,7 +1561,10 @@ sub template
 		#print "$THIS_FILE ".__LINE__."; << string: [$string]\n";
 		$page .= "$string\n";
 	}
-	$page .= "<!-- End template: [$template] from file: [$file] -->\n\n";
+	if (not $hide_template_comments)
+	{
+		$page .= "<!-- End template: [$template] from file: [$file] -->\n\n";
+	}
 	
 	return($page);
 }
@@ -1704,7 +1777,7 @@ sub read_strings
 	
 	my $read        = IO::Handle->new;
 	my $shell_call  = "<$file";
-	open ($read, $shell_call) or die hard_die($conf, $THIS_FILE, __LINE__, 1, "Failed to read: [$shell_call]. The error was: $!\n");
+	open ($read, $shell_call) or hard_die($conf, $THIS_FILE, __LINE__, 1, "Failed to read: [$shell_call]. The error was: $!\n");
 	if ($conf->{strings}{force_utf8})
 	{
 		binmode $read, "encoding(utf8)";
@@ -1926,9 +1999,18 @@ sub read_strings
 # to text/command line.
 sub wrap_string
 {
-	my ($conf, $string) = @_;
+	my ($conf, $string, $variables) = @_;
 	
-	my $wrap_to = get_screen_width($conf);
+	my $wrap_to = 72;
+	if ($variables->{wrap_to})
+	{
+		$wrap_to = $variables->{wrap_to};
+	}
+	else
+	{
+		$wrap_to = get_screen_width($conf);
+	}
+	record($conf, {line => __LINE__, file => $THIS_FILE, level => 1, message => "wrap_to: [$wrap_to]\n"});
 	
 	# No sense proceeding if the string is empty.
 	return ($string) if not $string;
@@ -2006,7 +2088,7 @@ sub get_screen_width
 	my ($conf) = @_;
 	
 	my $cols = 0;
-	open my $file_handle, '-|', "$conf->{path}{tput}", "cols" or die "Failed to call: [$conf->{path}{tput} cols]\n";
+	open my $file_handle, '-|', "$conf->{path}{tput}", "cols" or hard_die($conf, $THIS_FILE, __LINE__, 18, "Failed to call: [$conf->{path}{tput} cols]. The error was: $!\n");
 	while (<$file_handle>)
 	{
 		chomp;

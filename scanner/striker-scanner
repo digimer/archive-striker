@@ -42,5 +42,8 @@ my $THIS_FILE = "striker-scanner";
 
 my ($conf) = initialize($THIS_FILE);
 
+# Call agents.
+call_agents($conf);
+
 # Go to bed...
 exit (0);

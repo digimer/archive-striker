@@ -16,6 +16,10 @@
 13  = * Failed to write to the specified file. Error reason as returned by the OS should be displayed.
 14  = * Failed to call the setuid root 'call_gather-system-info' C-wrapper.
 15  = Given shell call failed. Error from the console will be included.
+16  = Failed to write the configuration file. Error reason as reported by the OS will be displayed.
+17  = * Initial configuration is required by the program was not running with (real or effective) 'root' permissions. Elevated priviledges are required for things like touching log/config files and setting their ownership.
+18  = * Failed to call 'tput' to get the width (in columns) of the user's terminal.
+19  = * Failed to create the log file during initial setup. Error from the console will be included.
 
 999 = Unknown error. This is usually the sign of a programming error.
 

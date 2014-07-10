@@ -55,6 +55,8 @@ db::password	=	#!var!db::password!#
 		<key name="install_0006">Name of the database? (#!var!answer!#): </key>
 		<key name="install_0007">User to connect to the database as? (#!var!answer!#): </key>
 		<key name="install_0008">Password to use for the database user? </key>
+		<key name="install_0009">Saving configuration file... </key>
+		<key name="install_0010">Starting over.</key>
 	</lang>
 
 	<!-- Japanese -->

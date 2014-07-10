@@ -6,6 +6,29 @@ use warnings;
 # Set static variables.
 my $THIS_FILE = "striker-scanner.lib";
 
+# This looks for all executable agents in scan.d and calls each it finds.
+sub call_agents
+{
+	my ($conf) = @_;
+	
+	my $full_path =  get_current_directory($conf);
+	   $full_path .= "/scan.d/";
+	print "Calling agents in: [$full_path]\n";
+	local(*DIRECTORY);
+	opendir(DIRECTORY, $full_path);
+	while(my $file = readdir(DIRECTORY))
+	{
+		next if $file eq ".";
+		next if $file eq "..";
+		# Skip anything with an extension.
+		next if $file =~ /\./;
+		my $this_path = $full_path.$file;
+		print "Calling: [$this_path]\n";
+	}
+	
+	return(0);
+}
+
 # This initializes a call; reads variables, etc.
 sub initialize
 {
@@ -55,6 +78,8 @@ sub initialize_conf
 			time_seperator			=>	":",
 			log_language			=>	"en_CA",
 			system_timezone			=>	"America/Toronto",
+			striker_user			=>	"root",			# This is needed as we'll be talking to hardware
+			striker_group			=>	"root",
 			output				=>	"text",
 		},
 		db				=>	{
@@ -80,6 +105,31 @@ sub initialize_conf
 sub initial_configuration
 {
 	my ($conf, $caller) = @_;
+	
+	# If this isn't being run as root, exit. We need root access in order
+	# to create log files and such.
+	if (($< != 0) && ($> != 0))
+	{
+		# Not root.
+		hard_die($conf, $THIS_FILE, __LINE__, 17, "Initial confguration is required. This reqires elevated priviledges in order to create log, configuration and other files, as well as set their permissions.\n");
+	}
+	else
+	{
+		# Make sure our log file exists.
+		if (not -e $conf->{path}{log_file})
+		{
+			my $fh = IO::Handle->new();
+			open ($fh, ">$conf->{path}{log_file}") or hard_die($conf, $THIS_FILE, __LINE__, 19, "Failed to write the file: [$conf->{path}{log_file}], the error was: $!\n");
+			$fh->close();
+			
+			### TODO: If the UID/GID are not found, the user needs
+			###       to be created.
+			# Get the UID and GID for the striker user and group.
+			$conf->{sys}{striker_uid} = getpwnam($conf->{sys}{striker_user});
+			$conf->{sys}{striker_gid} = getgrnam($conf->{sys}{striker_group});
+			chown $conf->{sys}{striker_uid}, $conf->{sys}{striker_gid}, $conf->{path}{log_file} or die "What? $!\n";
+		}
+	}
 	
 	my $db_type     = "Pg";
 	my $db_server   = "localhost";
@@ -183,19 +233,83 @@ sub initial_configuration
 		}});
 		my $save = <STDIN>;
 		chomp($save);
-		print "save: [$save], yes_answer: [$yes_answer], yes_short: [$yes_short]\n";
 		if ((lc($save) eq lc($yes_answer)) or (lc($save) eq lc($yes_short)))
 		{
-			print "Saved\n";
+			# Instead of passing in the values again, I will
+			# prepare the contents of the file now and pass that
+			# in. This is effectively the same call as above, but
+			# force wrap to 80 columns.
+			my $body = get_wrapped_string($conf, {key => 'install_0002', variables => {
+				'db::type'	=>	"$db_type",
+				'db::server'	=>	"$db_server",
+				'db::port'	=>	"$db_port",
+				'db::name'	=>	"$db_name",
+				'db::user'	=>	"$db_user",
+				'db::password'	=>	"$db_password",
+			}}, {
+				wrap_to		=>	80
+			});
+			write_configuration_file($conf, $body);
 			last;
 		}
 		else
 		{
-			print "Restarting.\n\n";
+			print get_wrapped_string($conf, {key => 'install_0010'}), "\n\n";
 		}
 	}
 	
-	#write_config($conf);
+	return(0);
+}
+
+# This writes out an initial configuration file.
+sub write_configuration_file
+{
+	my ($conf, $body) = @_;
+	
+	print get_wrapped_string($conf, {key => 'install_0009'}), "\n";
+	
+	# Check for parent directories and create if needed.
+	my ($path, $file) = ($conf->{path}{config_file} =~ /^(.*)\/(.*?)$/);
+	if (not -e $path)
+	{
+		# Create the path.
+		my $directory = "";
+		foreach my $name (split/\//, $path)
+		{
+			next if not $name;
+			$directory .= "/$name";
+			if (not -e $directory)
+			{
+				mkdir $directory or soft_die($conf, $THIS_FILE, __LINE__, 16, 
+							template($conf, "./striker-scanner.template", "soft-die", {}, {
+								message	=>	get_wrapped_string($conf, {
+									key		=>	'error_0003', 
+									variables	=>	{
+										directory	=>	$directory,
+										system_error	=>	$!
+									}
+								})
+							})
+						);
+			}
+		}
+	}
+	
+	my $fh = IO::Handle->new();
+	# The 'soft_die' function is a little complex, given the need to pull from a template and translate a string.
+	open ($fh, ">$conf->{path}{config_file}") or soft_die($conf, $THIS_FILE, __LINE__, 16, 
+							template($conf, "./striker-scanner.template", "soft-die", {}, {
+								message	=>	get_wrapped_string($conf, {
+									key		=>	'error_0001', 
+									variables	=>	{
+										config_file	=>	$conf->{path}{config_file},
+										system_error	=>	$!
+									}
+								})
+							})
+						);
+	print $fh $body;
+	$fh->close();
 	
 	return(0);
 }
@@ -213,8 +327,8 @@ sub read_configuration_file
 	}
 	else
 	{
-		my $read  = IO::Handle->new();
-		my $shell_call = "$conf->{file}{config}";
+		my $read       = IO::Handle->new();
+		my $shell_call = "$conf->{path}{config_file}";
 		# This is causing a loop... can't call 'error' this early.
 		open ($read, $shell_call) or hard_die($conf, $THIS_FILE, __LINE__, 1, "Failed to read: [$shell_call]. The error was: $!\n");
 		binmode $read, ":utf8:";
@@ -262,16 +376,6 @@ sub read_configuration_file
 		}
 		$read->close();
 	}
-	
-	return(0);
-}
-
-# This writes out an initial configuration file.
-sub write_config
-{
-	my ($conf) = @_;
-	
-	
 	
 	return(0);
 }
