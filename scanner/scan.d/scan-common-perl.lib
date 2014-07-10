@@ -1,0 +1,100 @@
+#!/usr/bin/perl
+#
+# This is a shared library for common functions used by multiple scanners.
+# 
+# Author:  Madison Kelly, mkelly@alteeve.ca
+# Version: 0.1
+
+use strict;
+use warnings;
+
+
+# This looks at all keys in $conf->{path} whose values don't start with '/' and
+# tries to find them on this system.
+sub find_executables
+{
+	my ($conf) = @_;
+	
+	my $search = $ENV{'PATH'};
+	#print "Searching in: [$search] for programs.\n";
+	foreach my $program (keys %{$conf->{path}})
+	{
+		next if $program =~ /^\//;
+		foreach my $directory (split /:/, $search)
+		{
+			my $full_path = "$directory/$program";
+			if (-e $full_path)
+			{
+				$conf->{path}{$program} = $full_path;
+				last;
+			}
+		}
+	}
+
+	return ($conf);
+}
+
+# This collects the command line switches
+sub get_switches
+{
+	my ($conf) = @_;
+	
+	my $last_argument = "";
+	foreach my $argument (@ARGV)
+	{
+		if ($last_argument eq "raw")
+		{
+			# Don't process anything.
+			$conf->{switches}{raw} .= " $argument";
+		}
+		elsif ($argument =~ /^-/)
+		{
+			# If the argument is just '--', appeand everything
+			# after it to 'raw'.
+			if ($argument eq "--")
+			{
+				$last_argument         = "raw";
+				$conf->{switches}{raw} = "";
+			}
+			else
+			{
+				($last_argument) = ($argument =~ /^-{1,2}(.*)/)[0];
+				if ($last_argument =~ /=/)
+				{
+					# Break up the variable/vlue.
+					($last_argument, my $value) = (split /=/, $last_argument, 2);
+					$conf->{switches}{$last_argument} = $value;
+				}
+				else
+				{
+					$conf->{switches}{$last_argument} = 1;
+				}
+			}
+		}
+		else
+		{
+			if ($last_argument)
+			{
+				$conf->{switches}{$last_argument} = $argument;
+				$last_argument                    = "";
+			}
+			else
+			{
+				# Got a value without an argument.
+				$conf->{switches}{error} = 1;
+			}
+		}
+	}
+	# Clean up the initial space added to 'raw'.
+	if ($conf->{switches}{raw})
+	{
+		$conf->{switches}{raw} =~ s/^ //;
+	}
+	
+	# Debug
+	#foreach my $variable (sort {$a cmp $b} keys %{$conf->{switches}}) { print "Variable: [$variable]\t-> value: [$conf->{switches}{$variable}]\n"; }
+	
+	return(0);
+}
+
+1;

@@ -1,0 +1,112 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+
+# Gather up and print the XML describing this scanned.
+sub report_xml
+{
+	my ($conf) = @_;
+	
+	report_sql($conf);
+	report_parameters($conf);
+	
+	print q|
+<?xml version="1.0" ?>
+<scanner name="storage_mdadm">
+	<author>
+		<company>Alteeve's Niche! Inc.</company>
+		<human>Madison Kelly</human>
+		<url>https://alteeve.ca/w/</url>
+		<email>mkelly@alteeve.ca<email/>
+	<description>
+		<language iso="en_CA" default="true">
+			Monitors software (mdadm) RAID arrays and members. Does nothing if no software arrays are found.
+		</language>
+	</description>|;
+	print "
+	$conf->{xml}{parameters}
+	$conf->{xml}{sql}
+</scanner>
+";
+	
+	return(0);
+}
+
+# Prints the XML showing the supported command line switches.
+sub report_parameters
+{
+	my ($conf) = @_;
+	
+	$conf->{xml}{parameters} = q|
+	<parameters>
+		<parameter name="proc-file" default="/proc/mdstat" long-switch="--proc-file" short-switch="-p">
+			<description>
+				<language iso="en_CA" default="true">
+					Set this if you need to specify the proc file with the mdstat information. The default is #!xml!storage_mdadm::parameters::parameter::name:proc-file::default!#.
+				</language>
+			</description>
+		</parameter>
+	</parameters>|;
+
+	return(0);
+}
+
+# Print the XML showing the DB structure we need.
+sub report_sql
+{
+	my ($conf) = @_;
+	
+	# Tables types;
+	#   'sequence' == Sequences, will always start at '1' and have no maximum.
+	#   'data'     == Normal data tables.
+	# Special 'value' entries;
+	#   'nextval'  == Next sequence value
+	#   'true'     == DB's 'TRUE' (1) value
+	#   'false'    == DB's 'FALSE' (0) value
+	$conf->{xml}{sql} = q|
+	<sql>
+		<table name="storage_mdadm_seq" type="sequence" />
+		<table name="storage_mdadm_device_seq" type="sequence" />
+		<table name="storage_mdadm" type="data">
+			<column name="sm_id" type="int">
+				<primary_key table="storage_mdadm_seq" value="nextval" />
+			</column>
+			<column name="sm_in_use" type="boolean" not_null="true" default="true" />
+			<column name="sm_md_created type="text" />
+			<column name="sm_md_raid_level" type="text" />
+			<column name="sm_md_uuid" type="text" comment="delete ':'" />
+			<column name="sm_md_device" type="text" />
+			<column name="sm_md_size" type="bigint comment="Store in bytes, provided as both base 2 and 10" />
+			<column name="sm_md_state" type="text" />
+			<column name="sm_md_devices_raid" type="int" />
+			<column name="sm_md_devices_total" type="int" />
+			<column name="sm_md_devices_active" type="int" />
+			<column name="sm_md_devices_working" type="int" />
+			<column name="sm_md_devices_failed" type="int" />
+			<column name="sm_md_devices_spare" type="int" />
+		</table>
+		<table name="storage_mdadm_device" type="data">
+			<column name="smd_id type="int">
+				<primary_key table="storage_mdadm_device_seq" value="nextval" />
+			</column>
+			<column name="smd_sm_id" type="int">
+				<foreign_key name="smd_sm_id" table="storage_mdadm" column="sm_id" />
+			</column>
+			<column name="sm_md_raid_level" type="text" />
+			<column name="sm_md_uuid" type="text" comment="delete ':'" />
+			<column name="sm_md_device" type="text" />
+			<column name="sm_md_size" type="bigint" comment="Store in bytes, provided as both base 2 and 10" />
+			<column name="sm_md_state" type="text" />
+			<column name="sm_md_devices_active" type="int" />
+			<column name="sm_md_devices_working" type="int" />
+			<column name="sm_md_devices_failed" type="int" />
+			<column name="sm_md_devices_spare" type="int" />
+		</table>
+	</sql>|;
+	
+	return(0);
+}
+
+1;

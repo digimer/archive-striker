@@ -1,0 +1,36 @@
+#!/usr/bin/perl
+#
+# Scanner for software RAID arrays
+#
+# Author:  Madison Kelly, mkelly@alteeve.ca
+# Version: 0.1
+
+use strict;
+use warnings;
+
+require "scan-common-perl.lib";
+require "storage_mdadm.lib";
+
+my $conf = initialize();
+get_switches($conf);
+
+# Tell the scanner about us.
+report_xml($conf);
+
+
+exit(0);
+
+
+# Initialize.
+sub initialize
+{
+	my $conf = {
+		path	=>	{
+			mdadm	=>	"mdadm",
+			mdstat	=>	"/proc/mdstat",
+		},
+	};
+	
+	# Find the paths of executables that are not fully defined.
+	find_executables($conf);
+}
