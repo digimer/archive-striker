@@ -90,9 +90,15 @@ sub call_specific_agent
 	
 	if ($agent_name)
 	{
+		# Parse the XML
+		$conf->{$agent_name}{xml} = {};
+		
+		print "===================================\n";
 		print "Agent: [$agent_name] XML:\n";
 		print "===================================\n";
 		print $xml_contents;
+		print "===================================\n";
+		parse_xml($conf, $conf->{$agent_name}{xml}, $xml_contents);
 		print "===================================\n";
 	}
 	
