@@ -1760,46 +1760,6 @@ sub process_string_restore_escape_variables
 	return($string);
 }
 
-# This is similar to 'read_strings', but it is a more general XML parser. It
-# feeds the parsed XML into the passed hash reference.
-sub parse_xml
-{
-	my ($conf, $hash_reference, $xml) = @_;
-	
-	my $string_ref  = $hash_reference;
-	my $in_comment  = 0;	# Set to '1' when in a comment stanza that spans more than one line.
-	my $in_data     = 0;	# Set to '1' when reading data that spans more than one line.
-	my $closing_key = "";	# While in_data, look for this key to know when we're done.
-	my $xml_version = "";	# The XML version of the strings file.
-	my $encoding    = "";	# The encoding used in the strings file. Should only be UTF-8.
-	my $data        = "";	# The data being read for the given key.
-	my $key_name    = "";	# This is a double-colon list of hash keys used to build each hash element.
-	foreach my $line (split/\n/, $xml)
-	{
-		print "Reference: [$hash_reference], Line: [$line]\n";
-		
-		# Parse the line.
-		($string_ref, 
-		$in_comment, 
-		$in_data, 
-		$closing_key, 
-		$xml_version, 
-		$encoding, 
-		$data, 
-		$key_name) = parse_xml_line($conf, $line, 
-					$string_ref, 
-					$in_comment, 
-					$in_data, 
-					$closing_key, 
-					$xml_version, 
-					$encoding, 
-					$data, 
-					$key_name);
-	}
-	
-	return(0);
-}
-
 # This reads in the strings XML file.
 sub read_strings
 {
@@ -1826,240 +1786,213 @@ sub read_strings
 	{
 		chomp;
 		my $line=$_;
-		
-		# Parse the line.
-		($string_ref, 
-		$in_comment, 
-		$in_data, 
-		$closing_key, 
-		$xml_version, 
-		$encoding, 
-		$data, 
-		$key_name) = parse_xml_line($conf, $line, 
-					$string_ref, 
-					$in_comment, 
-					$in_data, 
-					$closing_key, 
-					$xml_version, 
-					$encoding, 
-					$data, 
-					$key_name);
+
+		### Deal with comments.
+		# Look for a closing stanza if I am (still) in a comment.
+		if (($in_comment) && ( $line =~ /-->/ ))
+		{
+			$line       =~ s/^(.*?)-->//;
+			$in_comment =  0;
+		}
+		next if ($in_comment);
+
+		# Strip out in-line comments.
+		while ($line =~ /<!--(.*?)-->/)
+		{
+			$line =~ s/<!--(.*?)-->//;
+		}
+
+		# See if there is an comment opening stanza.
+		if ($line =~ /<!--/)
+		{
+			$in_comment =  1;
+			$line       =~ s/<!--(.*)$//;
+		}
+		### Comments dealt with.
+
+		### Parse data
+		# XML data
+		if ($line =~ /<\?xml version="(.*?)" encoding="(.*?)"\?>/)
+		{
+			$conf->{strings}{xml_version} = $1;
+			$conf->{strings}{encoding}    = $2;
+			next;
+		}
+
+		# If I am not "in_data" (looking for more data for a currently in use key).
+		if (not $in_data)
+		{
+			# Skip blank lines.
+			next if $line =~ /^\s+$/;
+			next if $line eq "";
+			$line         =~ s/^\s+//;
+
+			# Look for an inline data-structure.
+			if (($line =~ /<(.*?) (.*?)>/) && ($line =~ /<\/$1>/))
+			{
+				# First, look for CDATA.
+				my $cdata = "";
+				if ($line =~ /<!\[CDATA\[(.*?)\]\]>/)
+				{
+					$cdata =  $1;
+					$line  =~ s/<!\[CDATA\[$cdata\]\]>/$cdata/;
+				}
+
+				# Pull out the key and name.
+				my ($key) = ($line =~ /^<(.*?) /);
+				my ($name, $data) = ($line =~ /^<$key name="(.*?)">(.*?)<\/$key>/);
+				$data =  $cdata if $cdata;
+				_make_hash_reference($string_ref, "${key_name}::${key}::${name}::content", $data);
+				next;
+			}
+
+			# Look for a self-contained unkeyed structure.
+			if (($line =~ /<(.*?)>/) && ($line =~ /<\/$1>/))
+			{
+				my $key  =  $line;
+				   $key  =~ s/<(.*?)>.*/$1/;
+				   $data =  $line;
+				   $data =~ s/<$key>(.*?)<\/$key>/$1/;
+				_make_hash_reference($string_ref, "${key_name}::${key}", $data);
+				next;
+			}
+
+			# Look for a line with a closing stanza.
+			if ($line =~ /<\/(.*?)>/)
+			{
+				my $closing_key =  $line;
+				   $closing_key =~ s/<\/(\w+)>/$1/;
+				   $key_name    =~ s/(.*?)::$closing_key(.*)/$1/;
+				next;
+			}
+
+			# Look for a key with an embedded value.
+			if ($line =~ /^<(\w+) name="(.*?)" (\w+)="(.*?)">/)
+			{
+				my $key   =  $1;
+				my $name  =  $2;
+				my $key2  =  $3;
+				my $data  =  $4;
+				$key_name .= "::${key}::${name}";
+				_make_hash_reference($string_ref, "${key_name}::${key}::${key2}", $data);
+				next;
+			}
+
+			# Look for a contained value.
+			if ($line =~ /^<(\w+) name="(.*?)">(.*)/)
+			{
+				my $key  = $1;
+				my $name = $2;
+				   $data = $3;	# Don't scope locally in case this data spans lines.
+
+				if ($data =~ /<\/$key>/)
+				{
+					# Fully contained data.
+					$data =~ s/<\/$key>(.*)$//;
+					_make_hash_reference($string_ref, "${key_name}::${key}::${name}", $data);
+				}
+				else
+				{
+					# Element closes later.
+					$in_data     =  1;
+					$closing_key =  $key;
+					$name        =~ s/^<$key name="(\w+).*/$1/;
+					$key_name    .= "::${key}::${name}";
+					$data        =~ s/^<$key name="$name">(.*)/$1/;
+					$data        .= "\n";
+				}
+				next;
+			}
+
+			# Look for an opening data structure.
+			if ($line =~ /<(.*?)>/)
+			{
+				my $key      =  $1;
+				   $key_name .= "::$key";
+				next;
+			}
+		}
+		else
+		{
+			if ($line !~ /<\/$closing_key>/)
+			{
+				$data .= "$line\n";
+			}
+			else
+			{
+				$in_data =  0;
+				$line    =~ s/(.*?)<\/$closing_key>/$1/;
+				$data    .= "$line";
+
+				# If there is CDATA, set it aside.
+				my $save_data = "";
+				my @lines     = split/\n/, $data;
+
+				my $in_cdata  = 0;
+				foreach my $line (@lines)
+				{
+					if (($in_cdata == 1) && ($line =~ /]]>$/))
+					{
+						# CDATA closes here.
+						$line      =~ s/]]>$//;
+						$save_data .= "\n$line";
+						$in_cdata  =  0;
+					}
+					if (($line =~ /^<\!\[CDATA\[/) && ($line =~ /]]>$/))
+					{
+						# CDATA opens and closes in this line.
+						$line      =~ s/^<\!\[CDATA\[//;
+						$line      =~ s/]]>$//;
+						$save_data .= "\n$line";
+					}
+					elsif ($line =~ /^<\!\[CDATA\[/)
+					{
+						$line     =~ s/^<\!\[CDATA\[//;
+						$in_cdata =  1;
+					}
+					
+					if ($in_cdata == 1)
+					{
+						# Don't analyze, just store.
+						$save_data .= "\n$line";
+					}
+					else
+					{
+						# Not in CDATA, look for XML data.
+						#print "Checking: [$line] for an XML item.\n";
+						while (($line =~ /<(.*?)>/) && ($line =~ /<\/$1>/))
+						{
+							# Found a value.
+							my $key  =  $line;
+							   $key  =~ s/.*?<(.*?)>.*/$1/;
+							   $data =  $line;
+							   $data =~ s/.*?<$key>(.*?)<\/$key>/$1/;
+
+							#print "Saving: key: [$key], [${key_name}::${key}] -> [$data]\n";
+							_make_hash_reference($string_ref, "${key_name}::${key}", $data);
+							$line =~ s/<$key>(.*?)<\/$key>//;
+						}
+						$save_data .= "\n$line";
+					}
+					#print "$THIS_FILE ".__LINE__."; [$in_cdata] Check: [$line]\n";
+				}
+
+				$save_data =~ s/^\n//;
+				if ($save_data =~ /\S/s)
+				{
+					#print "$THIS_FILE ".__LINE__."; save_data: [$save_data]\n";
+					_make_hash_reference($string_ref, "${key_name}::content", $save_data);
+				}
+
+				$key_name =~ s/(.*?)::$closing_key(.*)/$1/;
+			}
+		}
+		next if $line eq "";
 	}
 	$read->close();
 	#use Data::Dumper; print Dumper $conf;
 	
 	return(0);
-}
-
-### TODO: These variables being passed in and returned are uuuuugly.
-# This does the actual parsing of XML data lines.
-sub parse_xml_line
-{
-	my ($conf, $line, $string_ref, $in_comment, $in_data, $closing_key, $xml_version, $encoding, $data, $key_name) = @_;
-
-	### Deal with comments.
-	# Look for a closing stanza if I am (still) in a comment.
-	if (($in_comment) && ( $line =~ /-->/ ))
-	{
-		$line       =~ s/^(.*?)-->//;
-		$in_comment =  0;
-	}
-	return ($string_ref, $in_comment, $in_data, $closing_key, $xml_version, $encoding, $data, $key_name) if ($in_comment);
-
-	# Strip out in-line comments.
-	while ($line =~ /<!--(.*?)-->/)
-	{
-		$line =~ s/<!--(.*?)-->//;
-	}
-
-	# See if there is an comment opening stanza.
-	if ($line =~ /<!--/)
-	{
-		$in_comment =  1;
-		$line       =~ s/<!--(.*)$//;
-	}
-	### Comments dealt with.
-
-	### Parse data
-	# XML data
-	if ($line =~ /<\?xml version="(.*?)" encoding="(.*?)"\?>/)
-	{
-		$conf->{strings}{xml_version} = $1;
-		$conf->{strings}{encoding}    = $2;
-		return ($string_ref, $in_comment, $in_data, $closing_key, $xml_version, $encoding, $data, $key_name);
-	}
-
-	# If I am not "in_data" (looking for more data for a currently in use key).
-	if (not $in_data)
-	{
-		# Skip blank lines.
-		return ($string_ref, $in_comment, $in_data, $closing_key, $xml_version, $encoding, $data, $key_name) if $line =~ /^\s+$/;
-		return ($string_ref, $in_comment, $in_data, $closing_key, $xml_version, $encoding, $data, $key_name) if $line eq "";
-		$line         =~ s/^\s+//;
-
-		# Look for an inline data-structure.
-		if (($line =~ /<(.*?) (.*?)>/) && ($line =~ /<\/$1>/))
-		{
-			# First, look for CDATA.
-			my $cdata = "";
-			if ($line =~ /<!\[CDATA\[(.*?)\]\]>/)
-			{
-				$cdata =  $1;
-				$line  =~ s/<!\[CDATA\[$cdata\]\]>/$cdata/;
-			}
-
-			# Pull out the key and name.
-			my ($key) = ($line =~ /^<(.*?) /);
-			my ($name, $data) = ($line =~ /^<$key name="(.*?)">(.*?)<\/$key>/);
-			$data =  $cdata if $cdata;
-			_make_hash_reference($string_ref, "${key_name}::${key}::${name}::content", $data);
-			return ($string_ref, $in_comment, $in_data, $closing_key, $xml_version, $encoding, $data, $key_name);
-		}
-
-		# Look for a self-contained unkeyed structure.
-		if (($line =~ /<(.*?)>/) && ($line =~ /<\/$1>/))
-		{
-			my $key  =  $line;
-				$key  =~ s/<(.*?)>.*/$1/;
-				$data =  $line;
-				$data =~ s/<$key>(.*?)<\/$key>/$1/;
-			_make_hash_reference($string_ref, "${key_name}::${key}", $data);
-			return ($string_ref, $in_comment, $in_data, $closing_key, $xml_version, $encoding, $data, $key_name);
-		}
-
-		# Look for a line with a closing stanza.
-		if ($line =~ /<\/(.*?)>/)
-		{
-			my $closing_key =  $line;
-				$closing_key =~ s/<\/(\w+)>/$1/;
-				$key_name    =~ s/(.*?)::$closing_key(.*)/$1/;
-			return ($string_ref, $in_comment, $in_data, $closing_key, $xml_version, $encoding, $data, $key_name);
-		}
-
-		# Look for a key with an embedded value.
-		if ($line =~ /^<(\w+) name="(.*?)" (\w+)="(.*?)">/)
-		{
-			my $key   =  $1;
-			my $name  =  $2;
-			my $key2  =  $3;
-			my $data  =  $4;
-			$key_name .= "::${key}::${name}";
-			_make_hash_reference($string_ref, "${key_name}::${key}::${key2}", $data);
-			return ($string_ref, $in_comment, $in_data, $closing_key, $xml_version, $encoding, $data, $key_name);
-		}
-
-		# Look for a contained value.
-		if ($line =~ /^<(\w+) name="(.*?)">(.*)/)
-		{
-			my $key  = $1;
-			my $name = $2;
-				$data = $3;	# Don't scope locally in case this data spans lines.
-
-			if ($data =~ /<\/$key>/)
-			{
-				# Fully contained data.
-				$data =~ s/<\/$key>(.*)$//;
-				_make_hash_reference($string_ref, "${key_name}::${key}::${name}", $data);
-			}
-			else
-			{
-				# Element closes later.
-				$in_data     =  1;
-				$closing_key =  $key;
-				$name        =~ s/^<$key name="(\w+).*/$1/;
-				$key_name    .= "::${key}::${name}";
-				$data        =~ s/^<$key name="$name">(.*)/$1/;
-				$data        .= "\n";
-			}
-			return ($string_ref, $in_comment, $in_data, $closing_key, $xml_version, $encoding, $data, $key_name);
-		}
-
-		# Look for an opening data structure.
-		if ($line =~ /<(.*?)>/)
-		{
-			my $key      =  $1;
-				$key_name .= "::$key";
-			return ($string_ref, $in_comment, $in_data, $closing_key, $xml_version, $encoding, $data, $key_name);
-		}
-	}
-	else
-	{
-		if ($line !~ /<\/$closing_key>/)
-		{
-			$data .= "$line\n";
-		}
-		else
-		{
-			$in_data =  0;
-			$line    =~ s/(.*?)<\/$closing_key>/$1/;
-			$data    .= "$line";
-
-			# If there is CDATA, set it aside.
-			my $save_data = "";
-			my @lines     = split/\n/, $data;
-
-			my $in_cdata  = 0;
-			foreach my $line (@lines)
-			{
-				if (($in_cdata == 1) && ($line =~ /]]>$/))
-				{
-					# CDATA closes here.
-					$line      =~ s/]]>$//;
-					$save_data .= "\n$line";
-					$in_cdata  =  0;
-				}
-				if (($line =~ /^<\!\[CDATA\[/) && ($line =~ /]]>$/))
-				{
-					# CDATA opens and closes in this line.
-					$line      =~ s/^<\!\[CDATA\[//;
-					$line      =~ s/]]>$//;
-					$save_data .= "\n$line";
-				}
-				elsif ($line =~ /^<\!\[CDATA\[/)
-				{
-					$line     =~ s/^<\!\[CDATA\[//;
-					$in_cdata =  1;
-				}
-				
-				if ($in_cdata == 1)
-				{
-					# Don't analyze, just store.
-					$save_data .= "\n$line";
-				}
-				else
-				{
-					# Not in CDATA, look for XML data.
-					#print "Checking: [$line] for an XML item.\n";
-					while (($line =~ /<(.*?)>/) && ($line =~ /<\/$1>/))
-					{
-						# Found a value.
-						my $key  =  $line;
-							$key  =~ s/.*?<(.*?)>.*/$1/;
-							$data =  $line;
-							$data =~ s/.*?<$key>(.*?)<\/$key>/$1/;
-
-						#print "Saving: key: [$key], [${key_name}::${key}] -> [$data]\n";
-						_make_hash_reference($string_ref, "${key_name}::${key}", $data);
-						$line =~ s/<$key>(.*?)<\/$key>//;
-					}
-					$save_data .= "\n$line";
-				}
-				#print "$THIS_FILE ".__LINE__."; [$in_cdata] Check: [$line]\n";
-			}
-
-			$save_data =~ s/^\n//;
-			if ($save_data =~ /\S/s)
-			{
-				#print "$THIS_FILE ".__LINE__."; save_data: [$save_data]\n";
-				_make_hash_reference($string_ref, "${key_name}::content", $save_data);
-			}
-
-			$key_name =~ s/(.*?)::$closing_key(.*)/$1/;
-		}
-	}
-	#next if $line eq "";
-	
-	return ($string_ref, $in_comment, $in_data, $closing_key, $xml_version, $encoding, $data, $key_name);
 }
 
 # This wraps the passed screen to the current screen width. Assumes output of

@@ -91,14 +91,93 @@ sub call_specific_agent
 	if ($agent_name)
 	{
 		# Parse the XML
-		$conf->{$agent_name}{xml} = {};
+		# See: http://docs.activestate.com/activeperl/5.10/lib/XML/Simple/FAQ.html
+		use XML::Simple qw(:strict);
+		my $xs = XML::Simple->new(
+			forcearray	=>	['language', 'table', 'column', 'foreign_key'],
+			KeyAttr		=>	{
+				'language'	=>	'iso',
+				'table'		=>	'name',
+				'column'	=>	'name',
+				'foreign_key'	=>	'name',
+			});
+		$conf->{$agent_name}{xml} = $xs->XMLin($xml_contents);
 		
 		print "===================================\n";
-		print "Agent: [$agent_name] XML:\n";
-		print "===================================\n";
-		print $xml_contents;
-		print "===================================\n";
-		parse_xml($conf, $conf->{$agent_name}{xml}, $xml_contents);
+		#print "Agent: [$agent_name] XML:\n";
+		#print "===================================\n";
+		#print $xml_contents;
+		#print "===================================\n";
+		#use Data::Dumper;
+		#print Dumper $conf->{$agent_name}{xml};
+		#print "===================================\n";
+		print "Name: [$conf->{$agent_name}{xml}->{name}]\n";
+		foreach my $language (sort {$a cmp $b} keys %{$conf->{$agent_name}{xml}->{description}->{language}})
+		{
+			my $description =  $conf->{$agent_name}{xml}->{description}->{language}->{$language}->{content};
+				$description =~ s/^\s+//g;
+				$description =~ s/\s+$//g;
+			print " - Language: [$language], default? [$conf->{$agent_name}{xml}->{description}->{language}->{$language}->{default}]\n";
+			print "   Descriptions: [$description]\n";
+		}
+		print "Author: [$conf->{$agent_name}{xml}->{author}->{human} ($conf->{$agent_name}{xml}->{author}->{email}}]\n";
+		print " - Company: [$conf->{$agent_name}{xml}->{author}->{company} ($conf->{$agent_name}{xml}->{author}->{url}}]\n";
+		print "Parameters\n";
+		foreach my $key (sort {$a cmp $b} keys %{$conf->{$agent_name}{xml}->{parameters}->{parameter}})
+		{
+			if ($key eq "description")
+			{
+				foreach my $language (sort {$a cmp $b} keys %{$conf->{$agent_name}{xml}->{parameters}->{parameter}->{$key}->{language}})
+				{
+					my $description =  $conf->{$agent_name}{xml}->{parameters}->{parameter}->{$key}->{language}->{$language}->{content};
+					   $description =~ s/^\s+//g;
+					   $description =~ s/\s+$//g;
+					print " - Language: [$language], default? [$conf->{$agent_name}{xml}->{parameters}->{parameter}->{$key}->{language}->{$language}->{default}]\n";
+					print "   Descriptions: [$description]\n";
+				}
+			}
+			else
+			{
+				print " - key: [$key]\t-> [$conf->{$agent_name}{xml}->{parameters}->{parameter}->{$key}]\n";
+			}
+		}
+		print "SQL structure:\n";
+		foreach my $table (sort {$a cmp $b} keys %{$conf->{$agent_name}{xml}->{sql}->{table}})
+		{
+			my $table_type = $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{type};
+			print " - Table: [$table], type: [$table_type]\n";
+			if ($table_type eq "data")
+			{
+				foreach my $column (sort {$a cmp $b} keys %{$conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}})
+				{
+					my $column_type = $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{type};
+					my $not_null    = $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{not_null}    ? $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{not_null}    : "--";
+					my $default     = $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{'default'}   ? $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{'default'}   : "--";
+					my $comment     = $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{comment}     ? $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{comment}     : "";
+					print "   - Column: [$column], type: [$column_type], null? [$not_null], default: [$default]\n";
+					if ($comment)
+					{
+						# Ignore this in production
+						print "     Comment: [$comment]\n";
+					}
+					if ($conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{primary_key})
+					{
+						my $pk_table = $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{primary_key}->{table};
+						my $pk_value = $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{primary_key}->{value};
+						print "     Primary key: [$pk_value($pk_table)]\n";
+					}
+					if ($conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{foreign_key})
+					{
+						foreach my $foreign_key (sort {$a cmp $b} keys %{$conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{foreign_key}})
+						{
+							my $fk_table  = $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{foreign_key}->{$foreign_key}->{table};
+							my $fk_column = $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{foreign_key}->{$foreign_key}->{column};
+							print "     Foreign key: [$foreign_key] references: [$fk_table($fk_column)]\n";
+						}
+					}
+				}
+			}
+		}
 		print "===================================\n";
 	}
 	
