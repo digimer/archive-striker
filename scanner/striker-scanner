@@ -32,6 +32,7 @@ use warnings;
 use utf8;
 use IO::Handle;
 use Term::ReadKey;
+use DBI;
 
 # Require libraries
 require 'common.lib';

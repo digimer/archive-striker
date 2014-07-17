@@ -94,7 +94,7 @@ sub call_specific_agent
 		# See: http://docs.activestate.com/activeperl/5.10/lib/XML/Simple/FAQ.html
 		use XML::Simple qw(:strict);
 		my $xs = XML::Simple->new(
-			forcearray	=>	['language', 'table', 'column', 'foreign_key'],
+			ForceArray	=>	['language', 'table', 'column', 'foreign_key'],
 			KeyAttr		=>	{
 				'language'	=>	'iso',
 				'table'		=>	'name',
@@ -141,44 +141,224 @@ sub call_specific_agent
 				print " - key: [$key]\t-> [$conf->{$agent_name}{xml}->{parameters}->{parameter}->{$key}]\n";
 			}
 		}
-		print "SQL structure:\n";
-		foreach my $table (sort {$a cmp $b} keys %{$conf->{$agent_name}{xml}->{sql}->{table}})
+ 		print "SQL structure:\n";
+# 		foreach my $table (sort {$a cmp $b} keys %{$conf->{$agent_name}{xml}->{sql}->{table}})
+# 		{
+# 			my $table_type = $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{type};
+# 			print " - Table: [$table], type: [$table_type]\n";
+# 			if ($table_type eq "data")
+# 			{
+# 				foreach my $column (sort {$a cmp $b} keys %{$conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}})
+# 				{
+# 					my $column_type = $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{type};
+# 					my $not_null    = $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{not_null}    ? $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{not_null}    : "--";
+# 					my $default     = $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{'default'}   ? $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{'default'}   : "--";
+# 					my $comment     = $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{comment}     ? $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{comment}     : "";
+# 					print "   - Column: [$column], type: [$column_type], null? [$not_null], default: [$default]\n";
+# 					if ($comment)
+# 					{
+# 						# Ignore this in production
+# 						print "     Comment: [$comment]\n";
+# 					}
+# 					if ($conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{primary_key})
+# 					{
+# 						my $pk_table = $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{primary_key}->{table};
+# 						my $pk_value = $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{primary_key}->{value};
+# 						print "     Primary key: [$pk_value($pk_table)]\n";
+# 					}
+# 					if ($conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{foreign_key})
+# 					{
+# 						foreach my $foreign_key (sort {$a cmp $b} keys %{$conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{foreign_key}})
+# 						{
+# 							my $fk_table  = $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{foreign_key}->{$foreign_key}->{table};
+# 							my $fk_column = $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{foreign_key}->{$foreign_key}->{column};
+# 							print "     Foreign key: [$foreign_key] references: [$fk_table($fk_column)]\n";
+# 						}
+# 					}
+# 				}
+# 			}
+# 		}
+		print "===================================\n";
+		generate_sql_syntax($conf, $agent_name);
+		print "===================================\n";
+	}
+	
+	return(0);
+}
+
+sub generate_sql_syntax
+{
+	my ($conf, $agent_name) = @_;
+	
+	# Create the syntax for sequences first.
+	foreach my $table (sort {$a cmp $b} keys %{$conf->{$agent_name}{xml}->{sql}->{table}})
+	{
+		my $table_type = $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{type};
+		#print " - Table: [$table], type: [$table_type]\n";
+		next if ($table_type ne "sequence");
+		print "CREATE SEQUENCE $table\n";
+		print "  START WITH 1\n";
+		print "  INCREMENT BY 1\n";
+		print "  NO MAXVALUE\n";
+		print "  MINVALUE 0\n";
+		print "  CACHE 1;\n";
+		print "ALTER TABLE $table OWNER TO \"$conf->{db}{username}\";\n\n";
+	}
+	
+	# Now normal tables.
+	my $public    = "";
+	my $history   = "";
+	my $id_column = "";
+	foreach my $table (sort {$a cmp $b} keys %{$conf->{$agent_name}{xml}->{sql}->{table}})
+	{
+		my $table_type = $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{type};
+		#print " - Table: [$table], type: [$table_type]\n";
+		next if ($table_type ne "data");
+		$public  = "CREATE TABLE public.$table (\n";
+		$history = "CREATE TABLE history.$table (\n";
+	
+		# First pass; Primary keys.
+		foreach my $column (sort {$a cmp $b} keys %{$conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}})
 		{
-			my $table_type = $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{type};
-			print " - Table: [$table], type: [$table_type]\n";
-			if ($table_type eq "data")
+			next if not $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{primary_key};
+			my $pk_table    = $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{primary_key}->{table};
+			my $pk_value    = $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{primary_key}->{value};
+			my $column_type = $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{type};
+			my $comment     = $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{comment} ? $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{comment} : "";
+			my $is_id       = $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{is_id}   ? $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{is_id}   : "";
+			if ($is_id)
 			{
-				foreach my $column (sort {$a cmp $b} keys %{$conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}})
+				$id_column = $column;
+			}
+			my $line =  "$column  $column_type  primary key  not null  default($pk_value($pk_table)),";
+			   $line .= "  -- $comment" if $comment;
+			$public  .= "  $line\n";
+			
+			# History doesn't need the primary key, it just needs a matching data type.
+			$history .= "  $column  $column_type  not null,\n";
+		}
+		
+		# Second pass is the main tables.
+		foreach my $column (sort {$a cmp $b} keys %{$conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}})
+		{
+			next if $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{primary_key};
+			next if $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{foreign_key};
+			my $column_type = $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{type};
+			my $not_null    = $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{not_null}    ? $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{not_null}    : "";
+			my $default     = $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{'default'}   ? $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{'default'}   : "";
+			my $comment     = $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{comment}     ? $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{comment}     : "";
+			
+			# Translate not null
+			if ($not_null ne "")
+			{
+				if (($not_null eq "false") || 
+				    ($not_null eq "0"))
 				{
-					my $column_type = $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{type};
-					my $not_null    = $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{not_null}    ? $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{not_null}    : "--";
-					my $default     = $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{'default'}   ? $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{'default'}   : "--";
-					my $comment     = $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{comment}     ? $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{comment}     : "";
-					print "   - Column: [$column], type: [$column_type], null? [$not_null], default: [$default]\n";
-					if ($comment)
-					{
-						# Ignore this in production
-						print "     Comment: [$comment]\n";
-					}
-					if ($conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{primary_key})
-					{
-						my $pk_table = $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{primary_key}->{table};
-						my $pk_value = $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{primary_key}->{value};
-						print "     Primary key: [$pk_value($pk_table)]\n";
-					}
-					if ($conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{foreign_key})
-					{
-						foreach my $foreign_key (sort {$a cmp $b} keys %{$conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{foreign_key}})
-						{
-							my $fk_table  = $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{foreign_key}->{$foreign_key}->{table};
-							my $fk_column = $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{foreign_key}->{$foreign_key}->{column};
-							print "     Foreign key: [$foreign_key] references: [$fk_table($fk_column)]\n";
-						}
-					}
+					$not_null = "";
+				}
+				elsif (($not_null eq "true") || 
+				    ($not_null eq "not null") || 
+				    ($not_null eq "1"))
+				{
+					$not_null = "not null";
 				}
 			}
+			my $line =  "$column  $column_type";
+			   $line .= "  $not_null" if $not_null;
+			   $line .= "  $default" if $default;
+			   $line .= ",";
+			   $line .= "  -- $comment" if $comment;
+			$public  .= "  $line\n";
+			$history .= "  $line\n";
 		}
-		print "===================================\n";
+		
+		# Add the common columns.
+		$public  .= "  modified_by integer not null,\n";
+		$public  .= "  modified_date timestamp with timezone not null default now(),\n";
+		
+		# History always gets the extra history ID
+		$history .= "  history_id  bigint  default(nextval('history_sequence')),\n";
+		$history .= "  modified_by  integer  not null,\n";
+		$history .= "  modified_date  timestamp with timezone  not null  default now(),\n";
+		
+		# One more loop looking for Foreign Keys.
+		foreach my $column (sort {$a cmp $b} keys %{$conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}})
+		{
+			next if not $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{foreign_key};
+			foreach my $foreign_key (sort {$a cmp $b} keys %{$conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{foreign_key}})
+			{
+				my $fk_table    = $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{foreign_key}->{$foreign_key}->{table};
+				my $fk_column   = $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{foreign_key}->{$foreign_key}->{column};
+				my $comment     = $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{comment}     ? $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{comment}     : "";
+				my $line =  "FOREIGN KEY($column) REFERENCES $fk_table($fk_column),";
+				$line .= "  -- $comment" if $comment;
+				$public  .= "  $line\n";
+				# Foreign Keys aren't critical in history
+			}
+		}
+		
+		# Close off the public schema
+		$public  =~ s/,\n$/\n/i;
+		$public  .= ");\n";
+		$public  .= "ALTER TABLE public.$table OWNER TO \"$conf->{db}{username}\";\n";
+
+		# Close off the history schema
+		$history  =~ s/,\n$/\n/i;
+		$history .= ");\n";
+		$history .= "ALTER TABLE history.$table OWNER TO \"$conf->{db}{username}\";\n";
+		print "$public\n";
+		print "$history\n";
+		
+		# If i didn't find the ID column, error out.
+		if (not $id_column)
+		{
+			die "No ID column found. Be sure the SQL schema has 'is_id=\"true\"' as an attribute for the primary key column\n";
+		}
+		
+		# Now build the function
+		print "CREATE FUNCTION history_$table() RETURNS \"trigger\"\n";
+		print "  AS \$\$\n";
+		print "  DECLARE\n";
+		print "    hist_$table RECORD;\n";
+		print "  BEGIN\n";
+		print "    SELECT INTO history_$table * FROM public.$table WHERE $id_column=new.$id_column;\n";
+		print "    INSERT INTO history.$table\n";
+		my $first = 1;
+		foreach my $column (sort {$a cmp $b} keys %{$conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}})
+		{
+			next if $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{foreign_key};
+			if ($first)
+			{
+				$first = 0;
+				print "      ($column, \n";
+			}
+			else
+			{
+				print "      $column, \n";
+			}
+		}
+		print "      modified_by)\n";
+		print "    VALUES\n";
+		$first = 1;
+		foreach my $column (sort {$a cmp $b} keys %{$conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}})
+		{
+			next if $conf->{$agent_name}{xml}->{sql}->{table}->{$table}->{column}->{$column}->{foreign_key};
+			if ($first)
+			{
+				$first = 0;
+				print "      (hist_$table.$column, \n";
+			}
+			else
+			{
+				print "      hist_$table.$column, \n";
+			}
+		}
+		print "      hist_users.modified_by);\n";
+		print "    RETURN NULL;\n";
+		print "  END;\$\$\n";
+		print "LANGUAGE plpgsql;\n";
+		print "ALTER FUNCTION history_$table() OWNER TO \"$conf->{db}{username}\";\n";
+		print "CREATE TRIGGER trigger_$table AFTER INSERT OR UPDATE ON \"$table\" FOR EACH ROW EXECUTE PROCEDURE history_$table();\n\n";
 	}
 	
 	return(0);
@@ -200,9 +380,35 @@ sub initialize
 	# setup will be triggered.
 	read_configuration_file($conf, $caller);
 	
+	# Connect to the database
+	#connect_to_db($conf); exit;
+	
 	return($conf);
 }
 
+# This connects to the database and stores the handle in $conf->{handles}{db}
+sub connect_to_db
+{
+	my ($conf) = @_;
+	
+	my $db_driver   = "DBI:Pg";
+	my $db_type     = $conf->{db}{type};
+	my $db_name     = $conf->{db}{name};
+	my $db_username = $conf->{db}{username};
+	my $db_password = $conf->{db}{password};
+	my $db_server   = $conf->{db}{server};
+	my $db_port     = $conf->{db}{port};
+	my $db_connect  = "$db_driver:dbname=$db_name;host=$db_server;port=$db_port";
+	
+	$conf->{handles}{db} = DBI->connect($db_connect, $db_username, $db_password, {
+		RaiseError	=> 1,
+		AutoCommit	=> 1,
+		pg_enable_utf8	=> 1
+	}) or die "Failed to connect to DB; $DBI::errstr\n";
+
+	
+	return($conf->{handles}{db});
+}
 # Set default configuration variable values
 sub initialize_conf
 {
@@ -284,6 +490,11 @@ sub initial_configuration
 			$conf->{sys}{striker_gid} = getgrnam($conf->{sys}{striker_group});
 			chown $conf->{sys}{striker_uid}, $conf->{sys}{striker_gid}, $conf->{path}{log_file} or die "What? $!\n";
 		}
+		
+		# If the database will be local, make sure the postgresql RPMs are installed.
+		
+		# Check for '/var/lib/pgsql/data'. If it doesn't exist, run
+		# '/usr/bin/postgresql-setup initdb'
 	}
 	
 	my $db_type     = "Pg";

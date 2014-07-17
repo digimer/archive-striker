@@ -67,11 +67,11 @@ sub report_sql
 	#   'false'    == DB's 'FALSE' (0) value
 	$conf->{xml}{sql} = q|
 	<sql>
-		<table name="storage_mdadm_seq" type="sequence" />
-		<table name="storage_mdadm_device_seq" type="sequence" />
+		<table name="storage_mdadm_sequence" type="sequence" />
+		<table name="storage_mdadm_device_sequence" type="sequence" />
 		<table name="storage_mdadm" type="data">
-			<column name="sm_id" type="int">
-				<primary_key table="storage_mdadm_seq" value="nextval" />
+			<column name="sm_id" type="int" is_id="true">
+				<primary_key table="storage_mdadm_sequence" value="nextval" />
 			</column>
 			<column name="sm_in_use" type="boolean" not_null="true" default="true" />
 			<column name="sm_md_created" type="text" />
@@ -89,20 +89,20 @@ sub report_sql
 		</table>
 		<table name="storage_mdadm_device" type="data">
 			<column name="smd_id" type="int">
-				<primary_key table="storage_mdadm_device_seq" value="nextval" />
+				<primary_key table="storage_mdadm_device_sequence" value="nextval" />
 			</column>
-			<column name="smd_sm_id" type="int">
+			<column name="smd_sm_id">
 				<foreign_key name="smd_sm_id" table="storage_mdadm" column="sm_id" />
 			</column>
-			<column name="sm_md_raid_level" type="text" />
-			<column name="sm_md_uuid" type="text" comment="delete ':'" />
-			<column name="sm_md_device" type="text" />
-			<column name="sm_md_size" type="bigint" comment="Store in bytes, provided as both base 2 and 10" />
-			<column name="sm_md_state" type="text" />
-			<column name="sm_md_devices_active" type="int" />
-			<column name="sm_md_devices_working" type="int" />
-			<column name="sm_md_devices_failed" type="int" />
-			<column name="sm_md_devices_spare" type="int" />
+			<column name="smd_md_raid_level" type="text" />
+			<column name="smd_md_uuid" type="text" comment="delete ':'" />
+			<column name="smd_md_device" type="text" />
+			<column name="smd_md_size" type="bigint" comment="Store in bytes, provided as both base 2 and 10" />
+			<column name="smd_md_state" type="text" />
+			<column name="smd_md_devices_active" type="int" />
+			<column name="smd_md_devices_working" type="int" />
+			<column name="smd_md_devices_failed" type="int" />
+			<column name="smd_md_devices_spare" type="int" />
 		</table>
 	</sql>|;
 	
