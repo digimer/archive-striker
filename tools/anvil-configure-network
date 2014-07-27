@@ -1,0 +1,178 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+my $conf = {
+	answer		=>	{
+		owner_prefix	=>	"an",
+		anvil_sequence	=>	4,
+		node_sequence	=>	1,
+	},
+	executable	=>	{
+		ip		=>	"/usr/sbin/ip",
+	},
+	nics		=>	["bcn-link1", "bcn-link2", "sn-link1", "sn-link2", "ifn-link1", "ifn-link2"],
+};
+
+until(select_nics($conf))
+{
+	sleep 1;
+}
+print "Owner prefix:   [$conf->{answer}{owner_prefix}]\n";
+print "Anvil sequence: [$conf->{answer}{anvil_sequence}]\n";
+print "Node sequence:  [$conf->{answer}{node_sequence}]\n";
+
+
+
+exit (0);
+
+sub select_nics
+{
+	my ($conf) = @_;
+
+	#system('clear');
+	print "\n-=] Configuring network for use as Anvil! node.\n\n";
+	print "Beginning NIC identification...\n";
+	foreach my $nic (@{$conf->{nics}})
+	{
+		my $plug_in_message_printed = 0;
+		while (my $down_links = check_nic_states($conf))
+		{
+			if (not $plug_in_message_printed)
+			{
+				print "  Please plug in all network cables to proceed.\n";
+				$plug_in_message_printed = 1;
+			}
+			#print "MAC address of down links: [$down_links]\n";
+			sleep 1;
+		}
+		my $say_nic = $nic;
+		if    ($nic =~ /^bcn-link(\d)/) { $say_nic = "Back-Channel Network, Link $1" }
+		elsif ($nic =~ /^sn-link(\d)/)  { $say_nic = "Storage Network, Link $1" }
+		elsif ($nic =~ /^ifn-link(\d)/) { $say_nic = "Internet-Facing Network, Link $1" }
+		print "- Please unplug the interface you want to make: [$say_nic]\n";
+		my $last_conflict = "";
+		while(1)
+		{
+			my $down_links = check_nic_states($conf);
+			if (($down_links) && ($down_links !~ /,/))
+			{
+				if ($conf->{nic}{mac}{$down_links}{new_name})
+				{
+					print "  The NIC with MAC address: [$down_links] is already allocated to: [$conf->{nic}{mac}{$down_links}{new_name}]\n" if ($last_conflict ne $down_links);
+					$last_conflict = $down_links;
+				}
+				else
+				{
+					$conf->{nic}{mac}{$down_links}{new_name} = $nic;
+					$conf->{nic}{name}{$nic}                 = $down_links;
+					print "  NIC with MAC: [$down_links] will become: [$conf->{nic}{mac}{$down_links}{new_name}] (is currently: [$conf->{nic}{mac}{$down_links}{current_name}])\n";
+					last;
+				}
+			}
+			sleep 1;
+		}
+	}
+	while (my $down_links = check_nic_states($conf))
+	{
+		if (not $plug_in_message_printed)
+		{
+			print "  Please plug in all network cables to proceed.\n";
+			$plug_in_message_printed = 1;
+		}
+		sleep 1;
+	}
+
+	my $proceed = 1;
+	print "\nHere is what you selected:\n";
+	foreach my $nic (@{$conf->{nics}})
+	{
+		my $say_nic = $nic;
+		if    ($nic =~ /^bcn-link(\d)/) { $say_nic = "Back-Channel Network, Link $1" }
+		elsif ($nic =~ /^sn-link(\d)/)  { $say_nic = "Storage Network, Link $1" }
+		elsif ($nic =~ /^ifn-link(\d)/) { $say_nic = "Internet-Facing Network, Link $1" }
+		my $this_mac = $conf->{nic}{name}{$nic};
+		if (not $this_mac)
+		{
+			print "[ Error ] - There seems to be a problem.\n";
+			print "[ Error ] - Desired NIC: [$nic] doesn't have a referenced MAC address!\n";
+			print "[ Error ] - Exiting.\n";
+			exit 1;
+		}
+		my $current_name = $conf->{nic}{mac}{$this_mac}{current_name};
+		if (not $current_name)
+		{
+			print "[ Error ] - There seems to be a problem.\n";
+			print "[ Error ] - Desired NIC: [$nic] doesn't have a referenced interface!\n";
+			print "[ Error ] - Exiting.\n";
+			exit 2;
+		}
+		print "- $say_nic will use the NIC with MAC: [$this_mac] ($current_name -> $nic)\n";
+	}
+	print "Shall I proceed? [Y/n] ";
+	my $answer = <STDIN>;
+	chomp($answer);
+	if (($answer) && (lc($answer) =~ /^n/))
+	{
+		$proceed = 0;
+		print "- Ok, starting over.\n";
+	}
+
+	return($proceed);
+}
+
+sub check_nic_states
+{
+	my ($conf) = @_;
+
+	my $unplugged_macs  = "";
+	my $this_iface      = "";
+	my $this_mac        = "";
+	my $this_link_state = "";
+	my $shell_call = "$conf->{executable}{ip} addr";
+	open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		if ($line =~ /^\d+: (.*?): <(.*?)>/)
+		{
+			$this_iface      = $1;
+			$this_link_state = $2;
+			$this_mac        = "";
+			$this_link_state =~ s/,.*//;
+			next;
+		}
+		next if not $this_iface;
+		next if $this_iface eq "lo";
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		if ($line =~ /ether ([0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2})/)
+		{
+			$this_mac = $1;
+			#print "this_mac: [$this_mac]\n";
+			$this_link_state = $this_link_state eq "NO-CARRIER" ? 0 : 1;
+			$conf->{nic}{mac}{$this_mac}{current_name} = $this_iface;
+			$conf->{nic}{mac}{$this_mac}{link_state}   = $this_link_state;
+		}
+	}
+	$file_handle->close();
+
+	foreach my $this_mac (sort {$a cmp $b} keys %{$conf->{nic}{mac}})
+	{
+		# Somewhere in the loop, an empty '$this_mac' is being created... 
+		# (I'm looking at you, autovivication >_>)
+		next if not $this_mac;
+		#print "NIC w/ MAC: [$this_mac]; Link: [$conf->{nic}{mac}{$this_mac}{link_state}], current name: [$conf->{nic}{mac}{$this_mac}{current_name}]\n";
+		if (not $conf->{nic}{mac}{$this_mac}{link_state})
+		{
+			$unplugged_macs .= "$this_mac,";
+		}
+	}
+
+	$unplugged_macs =~ s/,$//;
+	#print "  DEBUG: unpluggd_macs: [$unplugged_macs]\n";
+	return($unplugged_macs);
+}
+
