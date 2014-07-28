@@ -61,13 +61,13 @@ sub get_switches
 				($last_argument) = ($argument =~ /^-{1,2}(.*)/)[0];
 				if ($last_argument =~ /=/)
 				{
-					# Break up the variable/vlue.
+					# Break up the variable/value.
 					($last_argument, my $value) = (split /=/, $last_argument, 2);
 					$conf->{switches}{$last_argument} = $value;
 				}
 				else
 				{
-					$conf->{switches}{$last_argument} = 1;
+					$conf->{switches}{$last_argument} = "#!set!#";
 				}
 			}
 		}
