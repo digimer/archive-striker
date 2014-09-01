@@ -56,6 +56,7 @@ sub read_ethtool
 		my $link_up     = "?";
 		my $shell_call  = "$conf->{paths}{ethtool} $interface";
 		my $file_handle = IO::Handle->new();
+		#print "DEBUG; $THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n";
 		open($file_handle, "$shell_call 2>&1 |") or die "ERROR: Failed to call: [$shell_call], error: $!\n";
 		while (<$file_handle>)
 		{
@@ -64,6 +65,12 @@ sub read_ethtool
 			$line =~ s/^\s+//;
 			$line =~ s/\s+$//;
 			#print "DEBUG; $THIS_FILE ".__LINE__."; line: [$line]\n";
+			if (($line =~ /No such device/i) or ($line =~ /bad command line argument/i))
+			{
+				#print "DEBUG; Device not present, skipping.\n";
+				last;
+			}
+			
 			if ($line =~ /Supported link modes:\s+(.*)/)
 			{
 				$max_speed = $1;
@@ -96,6 +103,7 @@ sub read_ethtool
 				$link_up = $1;
 				$link_up = $link_up eq "yes" ? 1 : 0;
 				#print "DEBUG; $THIS_FILE ".__LINE__."; link_up: [$link_up]\n";
+				$conf->{interface}{$interface}{seen_in_ethtool} = 1;
 			}
 		}
 		$file_handle->close();
@@ -301,16 +309,22 @@ sub read_interfaces
 		{
 			$interface = $1;
 			#print "Parsing interface: [$interface] config file: [$file]\n";
-			$conf->{interface}{$interface}{mac}              = "" if not $conf->{interface}{$interface}{mac};
-			$conf->{interface}{$interface}{ip}               = "" if not $conf->{interface}{$interface}{ip};
-			$conf->{interface}{$interface}{subnet}           = "" if not $conf->{interface}{$interface}{subnet};
-			$conf->{interface}{$interface}{gateway}          = "" if not $conf->{interface}{$interface}{gateway};
-			$conf->{interface}{$interface}{dns1}             = "" if not $conf->{interface}{$interface}{dns1};
-			$conf->{interface}{$interface}{dns2}             = "" if not $conf->{interface}{$interface}{dns2};
-			$conf->{interface}{$interface}{defroute}         = "" if not $conf->{interface}{$interface}{defroute};
-			$conf->{interface}{$interface}{bootproto}        = "" if not $conf->{interface}{$interface}{bootproto};
-			$conf->{interface}{$interface}{mtu}              = "" if not $conf->{interface}{$interface}{mtu};
-			$conf->{interface}{$interface}{seen_in_ifconfig} = 0  if not $conf->{interface}{$interface}{seen_in_ifconfig};
+			$conf->{interface}{$interface}{mac}             = "" if not $conf->{interface}{$interface}{mac};
+			$conf->{interface}{$interface}{ip}              = "" if not $conf->{interface}{$interface}{ip};
+			$conf->{interface}{$interface}{type}            = "" if not $conf->{interface}{$interface}{type};
+			$conf->{interface}{$interface}{mode}            = "" if not $conf->{interface}{$interface}{mode};
+			$conf->{interface}{$interface}{uuid}            = "" if not $conf->{interface}{$interface}{uuid};
+			$conf->{interface}{$interface}{ssid}            = "" if not $conf->{interface}{$interface}{ssid};
+			$conf->{interface}{$interface}{essid}           = "" if not $conf->{interface}{$interface}{essid};
+			$conf->{interface}{$interface}{subnet}          = "" if not $conf->{interface}{$interface}{subnet};
+			$conf->{interface}{$interface}{gateway}         = "" if not $conf->{interface}{$interface}{gateway};
+			$conf->{interface}{$interface}{dns1}            = "" if not $conf->{interface}{$interface}{dns1};
+			$conf->{interface}{$interface}{dns2}            = "" if not $conf->{interface}{$interface}{dns2};
+			$conf->{interface}{$interface}{defroute}        = "" if not $conf->{interface}{$interface}{defroute};
+			$conf->{interface}{$interface}{bootproto}       = "" if not $conf->{interface}{$interface}{bootproto};
+			$conf->{interface}{$interface}{mtu}             = "" if not $conf->{interface}{$interface}{mtu};
+			$conf->{interface}{$interface}{seen_in_ip}      = 0  if not $conf->{interface}{$interface}{seen_in_ip};
+			$conf->{interface}{$interface}{seen_in_ethtool} = 0  if not $conf->{interface}{$interface}{seen_in_ethtool};
 			
 			my $shell_call  = "$conf->{paths}{interfaces}$file";
 			my $file_handle = IO::Handle->new();
@@ -332,6 +346,36 @@ sub read_interfaces
 					   $ip =~ s/^"(.*?)"$/$1/;
 					#print "interface,$interface,ip,$ip\n";
 					$conf->{interface}{$interface}{ip} = $ip;
+				}
+				elsif ($line =~ /TYPE=(.*)$/)
+				{
+					my $type = $1;
+					   $type =~ s/^"(.*?)"$/$1/;
+					$conf->{interface}{$interface}{type} = $type;
+				}
+				elsif ($line =~ /MODE=(.*)$/)
+				{
+					my $mode = $1;
+					   $mode =~ s/^"(.*?)"$/$1/;
+					$conf->{interface}{$interface}{mode} = $mode;
+				}
+				elsif ($line =~ /UUID=(.*)$/)
+				{
+					my $uuid = $1;
+					   $uuid =~ s/^"(.*?)"$/$1/;
+					$conf->{interface}{$interface}{uuid} = $uuid;
+				}
+				elsif ($line =~ /SSID=(.*)$/)
+				{
+					my $ssid = $1;
+					   $ssid =~ s/^"(.*?)"$/$1/;
+					$conf->{interface}{$interface}{ssid} = $ssid;
+				}
+				elsif ($line =~ /ESSID=(.*)$/)
+				{
+					my $essid = $1;
+					   $essid =~ s/^"(.*?)"$/$1/;
+					$conf->{interface}{$interface}{essid} = $essid;
 				}
 				elsif ($line =~ /NETMASK=(.*)$/)
 				{

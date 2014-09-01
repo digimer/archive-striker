@@ -1,0 +1,856 @@
+#!/usr/bin/perl
+# 
+# Backup program. Yes, another one.
+# 
+# Name:    AN!Backup
+# Dev:     Digimer (digimer@digimer.ca)
+# License: GPL v2+
+# Ver:     pre-release
+# 
+# Exit codes;
+# 1    - 'umount' call failed.
+# 2    - Unable to find a free mount point (maximum mount point suffix integer
+#        in-use).
+# 3    - Failed to create a directory for mounting an unmounted device on.
+# 4    - 'mount' call failed.
+# 5    - The 'mount' call did not fail, but on rescan the device was found to
+#        still be unmounted.
+# 6    - No candidate backup devices found (that is, devices with the signature
+#        file on it).
+# 7    - 'lvm lvscan' or 'lvm lvdisplay' call failed.
+# 8    - Parsing data returned by 'lvm lvdisplay' failed.
+# 9    - 'lvm vgscan' or 'lvm vgdisplay' call failed.
+# 10   - Parsing data returned by 'lvm vgdisplay' failed.
+# 11   - 'lvm pvscan' or 'lvm pvdisplay' call failed.
+# 12   - Parsing data returned by 'lvm pvdisplay' failed.
+# 13   - 'blkid' general call failed.
+# 14   - 'blkid' call against a specific device failed.
+# 15   - 'df' call failed.
+# 16   - Failed to parse a block size from a 'df' call.
+# 9999 - Killed by a SIGnal (usually a user hitting <ctrl> + <c>).
+
+use strict;
+use warnings;
+use URI::Escape;
+use IO::Handle;
+use Data::Dumper;
+use Email::Sender::Simple qw(sendmail);
+use Email::Sender::Transport::SMTP::TLS;
+use Try::Tiny;
+use Email::Simple::Creator;
+$SIG{INT}  = \&catch_sig;
+$SIG{TERM} = \&catch_sig;
+
+my $conf={
+	mail_data	=>	{
+		to		=>	"bernard\@riversideopticalab.com",
+		sending_domain	=>	"mail.alteeve.ca",
+		subject		=>	"",
+		body		=>	"",
+		subject_prefix	=>	"[ Riverside Optical Lab Backup ]",
+		body_content	=>	"-=] Output of an-backup follow:\n\n",
+		body_suffix	=>	"
+This backup program is provided by Alteeve's Niche! under the GNU GPL v2+
+license. There is no warranty or support for this program. If you have a 
+problem, please contact AN! and we will try to provide assistance.
+
+Please visit:
+https://alteeve.ca/w/Support
+",
+	},
+	smtp		=>	{
+		server		=>	"mail.alteeve.ca",
+		port		=>	587,
+		timeout		=>	60,
+		username	=>	"clusters\@alteeve.ca",
+		password	=>	"file:./email_pw.txt",
+		security	=>	"STARTTLS",
+		encrypt_pass	=>	1,
+		helo_domain	=>	"alteeve.ca",
+	},
+	skip		=>	",/dev,/lost+found,/proc,/run,/sys,",
+	stats		=>	{
+		symlinks	=>	0,
+		files		=>	0,
+		directories	=>	0,
+		block_devices	=>	0,
+		sockets		=>	0,
+		pipes		=>	0,
+		char_devices	=>	0,
+	},
+	timing		=>	{
+		start		=>	time,
+	},
+	intervals	=>	{
+		dirs		=>	1000,
+		files		=>	10000,
+		'time'		=>	5,
+		last_dirs	=>	0,
+		last_files	=>	0,
+		next_time	=>	time,
+	},
+	path		=>	{
+		df		=>	"/bin/df",
+		cryptsetup	=>	"/sbin/cryptsetup",
+		blkid		=>	"/sbin/blkid",
+		lvm		=>	"/sbin/lvm",
+		mount		=>	"/bin/mount",
+		umount		=>	"/bin/umount",
+		rsync		=>	"/usr/bin/rsync",
+	},
+	devices		=>	{
+		df_block_size	=>	0,
+	},
+	'system'	=>	{
+		mount_path	=>	"/mnt/backup",
+		sig_file	=>	".an_backup",
+		backup_dir	=>	"",
+		enable_email	=>	1,
+	},
+	sources		=>	{
+		'vm01-rs-labzilla' =>	{
+			user		=>	"root",
+			address		=>	"vm01-rs-labzilla",
+			directories	=>	[
+				"/acu",
+				"/bin",
+				"/boot",
+				"/build",
+				"/etc",
+				"/home",
+				"/lib",
+				"/lib64",
+				"/opt",
+				"/root",
+				"/sbin",
+				"/tftpboot",
+				"/u",
+				"/usr",
+				"/var"
+			],
+		},
+		'vm03-cl-labzilla' =>	{
+			user		=>	"root",
+			address		=>	"vm03-cl-labzilla",
+			directories	=>	[
+				"/acu",
+				"/bin",
+				"/boot",
+				"/build",
+				"/etc",
+				"/home",
+				"/lib",
+				"/lib64",
+				"/opt",
+				"/root",
+				"/sbin",
+				"/tftpboot",
+				"/u",
+				"/usr",
+				"/var"
+			],
+		},
+		'rs-c01n01'	=>	{
+			user		=>	"root",
+			address		=>	"rs-c01n01",
+			directories	=>	[
+				"/bin",
+				"/boot",
+				"/cgroup",
+				"/etc",
+				"/home",
+				"/lib",
+				"/lib64",
+				"/opt",
+				"/root",
+				"/sbin",
+				"/shared",
+				"/usr",
+				"/var"
+			],
+		},
+		'rs-c01n02'	=>	{
+			user		=>	"root",
+			address		=>	"rs-c01n02",
+			directories	=>	[
+				"/bin",
+				"/boot",
+				"/cgroup",
+				"/etc",
+				"/home",
+				"/lib",
+				"/lib64",
+				"/opt",
+				"/root",
+				"/sbin",
+				"/shared",
+				"/usr",
+				"/var"
+			],
+		},
+		'rs-m01'	=>	{
+			user		=>	"root",
+			address		=>	"rs-m01",
+			directories	=>	[
+				"/bin",
+				"/boot",
+				"/etc",
+				"/home",
+				"/lib",
+				"/lib64",
+				"/opt",
+				"/root",
+				"/sbin",
+				"/usr",
+				"/var"
+			],
+		},
+	},
+};
+
+# Find the storage devices currently.
+find_devices($conf);
+
+# Now find one that is a valid backup target.
+find_backup_device($conf);
+
+# Do the backup
+do_backup($conf);
+
+# Unmount anything I mounted.
+unmount_devices($conf);
+
+# Send the status email.
+my $subject="Backup run details";
+my $body="";
+send_email($conf, $subject, $body);
+
+exit(0);
+
+###############################################################################
+# Functions                                                                   #
+###############################################################################
+
+# This records a message (prints to screen and records in the string for later
+# emailing). It will also exit with a code if '$exit' is non-0.
+sub record
+{
+	my ($conf, $message, $exit)=@_;
+	$exit = 0 if not defined $exit;
+	
+	print "$message";
+	
+	$conf->{mail_data}{body_content}.="$message";
+	
+	if ($exit)
+	{
+		$conf->{mail_data}{subject_prefix} .= " - ABNORMAL EXIT: [$exit]";
+		$conf->{mail_data}{body_content} .= "\n\nEARLY TERMINATION! Exit code: [$exit]\n\n";
+		exit($exit);
+	}
+	
+	return(0);
+}
+
+# Send am email.
+sub send_email
+{
+	my ($conf, $subject, $body) = @_;
+	
+	$subject =  $conf->{mail_data}{subject_prefix}." $subject";
+	$body    .= $conf->{mail_data}{body_content}.$conf->{mail_data}{body_suffix};
+	
+	# If the password is in a file, read it.
+	if ($conf->{smtp}{password} =~ /^file:(.*)/)
+	{
+		my $file = $1;
+		my $sc = "$file";
+		#record($conf, "$THIS_FILE ".__LINE__."; Reading: [$sc]\n");
+		my $fh = IO::Handle->new();
+		open ($fh, "<$sc") or die "Failed to read: [$sc]\n";
+		while(<$fh>)
+		{
+			chomp;
+			$conf->{smtp}{password} = $_;
+			last;
+		}
+		$fh->close();
+	}
+	
+	my $transport = Email::Sender::Transport::SMTP::TLS->new(
+		host		=>	$conf->{smtp}{server},
+		port		=>	$conf->{smtp}{port},
+		username	=>	$conf->{smtp}{username},
+		password	=>	$conf->{smtp}{password},
+		helo		=>	$conf->{smtp}{helo_domain},
+	);
+
+	my $message = Email::Simple->create(
+		header	=> [
+			From	=>	$conf->{smtp}{username},
+			To	=>	$conf->{mail_data}{to},
+			Subject	=>	$subject,
+		],
+		body	=>	$body,
+	);
+	
+	try {
+		sendmail($message, { transport => $transport });
+	} catch {
+		die "Error sending email: $_";
+	};
+	
+	#record($conf, "$THIS_FILE ".__LINE__."; Sent: [$conf->{mail_data}{subject}], body: [$conf->{mail_data}{body}] to: [$conf->{mail_data}{to}]\n");
+	$conf->{mail_data}{subject} = "";
+	$conf->{mail_data}{body}    = "";
+	
+	return(0);
+}
+
+sub do_backup
+{
+	my ($conf)=@_;
+	
+	foreach my $source (sort {$a cmp $b} keys %{$conf->{sources}})
+	{
+		record($conf, "Beginning backup of: [$source]\n");
+		my $user             = $conf->{sources}{$source}{user};
+		my $address          = $conf->{sources}{$source}{address};
+		my $directories      = $conf->{sources}{$source}{directories};
+		my $backup_directory = $conf->{'system'}{backup_dir}."/".$source."/";
+		foreach my $dir (@{$directories})
+		{
+			my $fh=IO::Handle->new();
+			my $sc="$conf->{path}{rsync} -av $user\@$address:$dir $backup_directory";
+			record($conf, "sc: [$sc]\n");
+			open($fh, "$sc 2>&1 |") or die "Failed to call: [$sc], error: $!\n";
+			record($conf, "/----------------------------------------------------------------------\n");
+			while(<$fh>)
+			{
+				chomp;
+				my $line=lc($_);
+				record($conf, "| $line\n");
+			}
+			$fh->close();
+			record($conf, "\\----------------------------------------------------------------------\n");
+		}
+		record($conf, " - Done.\n");
+	}
+	
+	return(0);
+}
+
+sub unmount_devices
+{
+	my ($conf)=@_;
+	
+	record($conf, "Unmounting devices I mounted.\n");
+	foreach my $mount (sort {$a cmp $b} keys %{$conf->{i_mounted}})
+	{
+		record($conf, " - Unmounting: [$conf->{i_mounted}{$mount}] from: [$mount]\n");
+# 		record($conf, " - Unmounting: [$mount]\n");
+		my $fh=IO::Handle->new();
+		my $sc="$conf->{path}{umount} $conf->{i_mounted}{$mount}";
+# 		record($conf, "sc: [$sc]\n");
+		open($fh, "$sc 2>&1 |") or record($conf, "Failed to call: [$sc], error: $!\n", 1);
+		while(<$fh>)
+		{
+			chomp;
+			my $line=lc($_);
+			record($conf, " - Mount: [$line]\n");
+		}
+		$fh->close();
+		delete $conf->{i_mounted}{$mount};
+		record($conf, " - Done.\n");
+	}
+	
+	return (0);
+}
+
+sub mount_dev
+{
+	my ($conf, $dev)=@_;
+	
+# 	record($conf, " - Mounting: [$dev]\n");
+	
+	# Find an available mount point.
+	my $mount_point;
+	foreach my $i (1..9)
+	{
+		$mount_point=$conf->{'system'}{mount_path}.$i;
+# 		record($conf, " - Checking if mount point: [$mount_point] exists and is not in use\n");
+		if (-d $mount_point)
+		{
+# 			record($conf, " - Exists\n");
+			if ($conf->{mount}{$mount_point})
+			{
+# 				record($conf, " - But in use by: [$conf->{mount}{$mount_point}]\n");
+				if ($i == 9)
+				{
+					record($conf, "Failed to find a free mount point!\n", 2);
+				}
+			}
+			else
+			{
+# 				record($conf, " - Free! Will try to mount: [$dev] here.\n");
+				last;
+			}
+		}
+		else
+		{
+			record($conf, " - Mount point: [$mount_point] doesn't exist. Will try to create it now.\n");
+			mkdir $mount_point or record($conf, "Failed to create directory: [$mount_point], error: $!\n", 3);
+			record($conf, " - Done.\n");
+			last;
+		}
+	}
+	
+	# Do the actual mount.
+	record($conf, " - Performing mount of: [$dev] at: [$mount_point]\n");
+	my $fh=IO::Handle->new();
+	my $sc="$conf->{path}{mount} $dev $mount_point";
+# 	record($conf, "sc: [$sc]\n");
+	open($fh, "$sc 2>&1 |") or record($conf, "Failed to call: [$sc], error: $!\n", 4);
+	while(<$fh>)
+	{
+		chomp;
+		my $line=lc($_);
+		record($conf, " - Mount: [$line]\n");
+	}
+	$fh->close();
+	$conf->{mount}{$mount_point}=$dev;
+	$conf->{i_mounted}{$mount_point}=$dev;
+	record($conf, " - Done.\n");
+	
+	return (0);
+}
+
+sub find_backup_device
+{
+	my ($conf)=@_;
+	
+	# Mount devices.
+	record($conf, "Mounting any unmounted devices.\n");
+	my $did_mount=0;
+	foreach my $dev (sort {$a cmp $b} keys %{$conf->{dev}})
+	{
+		record($conf, "Device: [$dev]\n");
+		$conf->{dev}{$dev}{mount_path}   = "--" if not defined $conf->{dev}{$dev}{mount_path};
+		$conf->{dev}{$dev}{blkid}{label} = "--" if not $conf->{dev}{$dev}{blkid}{label};
+		#record($conf, " - Label: [$conf->{dev}{$dev}{blkid}{label}]\n");
+		#record($conf, " - UUID:  [$conf->{dev}{$dev}{uuid}]\n");
+		#record($conf, " - Mount: [$conf->{dev}{$dev}{mount_path}]\n");
+		#record($conf, " - Type:  [$conf->{dev}{$dev}{blkid}{type}]\n");
+		
+		# I only care about 'ext{2,3,4}' devices.
+		next if $conf->{dev}{$dev}{blkid}{type} !~ /^ext/;
+		if ($conf->{dev}{$dev}{mount_path} eq "--")
+		{
+			record($conf, " - Not mounted! Correcting this...\n");
+			$did_mount=1;
+			mount_dev($conf, $dev);
+		}
+		else
+		{
+			record($conf, " - Already mounted.\n");
+		}
+	}
+	
+	if ($did_mount)
+	{
+		# With everything mounted, re-run the scan.
+		record($conf, "Rescanning now that devices have been mounted.\n");
+		
+		# Don't want old data hanging around.
+		delete $conf->{dev};
+		find_devices($conf);
+		
+		# Make sure everything is mounted.
+		foreach my $dev (sort {$a cmp $b} keys %{$conf->{dev}})
+		{
+# 			record($conf, "Device: [$dev]\n");
+			$conf->{dev}{$dev}{mount_path}   = "--" if not defined $conf->{dev}{$dev}{mount_path};
+			$conf->{dev}{$dev}{blkid}{label} = "--" if not $conf->{dev}{$dev}{blkid}{label};
+# 			record($conf, " - Label: [$conf->{dev}{$dev}{blkid}{label}]\n");
+# 			record($conf, " - UUID:  [$conf->{dev}{$dev}{uuid}]\n");
+# 			record($conf, " - Mount: [$conf->{dev}{$dev}{mount_path}]\n");
+# 			record($conf, " - Type:  [$conf->{dev}{$dev}{blkid}{type}]\n");
+			
+			# I only care about 'ext{2,3,4}' devices.
+			next if $conf->{dev}{$dev}{blkid}{type} !~ /^ext/;
+			if ($conf->{dev}{$dev}{mount_path} eq "--")
+			{
+	# 			record($conf, " - Not mounted! Correcting this...\n");
+				record($conf, "Failed to mount: [$dev]!\n", 5);
+			}
+		}
+	}
+	
+	# Now with everything mounted, see which mount points have the signature.
+	record($conf, "Looking for usable devices.\n");
+	foreach my $mount (sort {$a cmp $b} keys %{$conf->{mount}})
+	{
+		my $sig_file=$mount."/".$conf->{'system'}{sig_file};
+		$sig_file=~s/\/\//\//g;
+# 		record($conf, " - Checking for: [$sig_file]\n");
+		if (-e $sig_file)
+		{
+# 			record($conf, " - Backup device found!\n");
+			$conf->{'system'}{backup_dir}=$mount;
+			last;
+		}
+		else
+		{
+# 			record($conf, " - Not a backup device, skipping.\n");
+		}
+	}
+	
+	if ($conf->{'system'}{backup_dir})
+	{
+		record($conf, " - Will backup to: [$conf->{'system'}{backup_dir}]\n");
+	}
+	else
+	{
+		record($conf, "Failed to find a backup device.\n", 6);
+	}
+	
+	return(0);
+}
+
+sub find_devices
+{
+	my ($conf)=@_;
+	
+	record($conf, "Building list of mounted devices:\n");
+	# Check; Standard partitions (inc. crypt), KVM, DRBD.
+	process_df($conf);
+	record($conf, " - Done\n");
+	
+	# Call blkid to get some more info.
+	record($conf, "Building list of all devices:\n");
+	process_blkid($conf);
+	record($conf, " - Done\n");
+	
+	# Check for LVM.
+	#record($conf, "Building list of all LVM devices:\n");
+	#process_lvm($conf);
+	#record($conf, " - Done\n");
+	
+	return(0);
+}
+
+sub process_lvm
+{
+	my ($conf)=@_;
+	
+	# If I can't find the LVM binary, assume LVM is not installed.
+	if (not -x $conf->{path}{lvm})
+	{
+		record($conf, "LVM does not appear to be installed.\n");
+		return (1);
+	}
+	
+	# Call pvscan - pvdisplay
+	process_lvm_pv($conf);
+	process_lvm_vg($conf);
+	process_lvm_lv($conf);
+	
+	return (0);
+}
+
+sub process_lvm_lv
+{
+	my ($conf)=@_;
+	
+	my $lv="";
+	my $fh=IO::Handle->new();
+	my $sc="$conf->{path}{lvm} lvscan && $conf->{path}{lvm} lvdisplay";
+	open($fh, "$sc 2>&1 |") or record($conf, "Failed to call: [$sc], error: $!\n", 7);
+	while(<$fh>)
+	{
+		chomp;
+		my $line=lc($_);
+		
+		$line=~s/^\s+//;
+		$line=~s/\s{2,}/#!#/;
+		$line=~s/\s+$//;
+		next if $line !~ /#!#/;
+		$line =~ s/^- //;
+		$line =~ s/^# /number /;
+		if ($line =~ /lv name#!#(.*)/)
+		{
+			$lv=$1;
+			next;
+		}
+		next if not $lv;
+		next if not $line;
+		#record($conf, "lv: [$lv] -> [$line]\n");
+		my ($var, $val)=split/#!#/, $line, 2;
+		if (not $var)
+		{
+			record($conf, "Failed to parse: [$line] for variable and value as split on '#!#'.\n", 8);
+		}
+		$val="" if not defined $val;
+		#record($conf, "Parsing: [$lv]: [$var] -> [$val]\n");
+		$conf->{lvm}{lv}{$lv}{$var}=$val;
+	}
+	$fh->close();
+	
+	return (0);
+}
+
+sub process_lvm_vg
+{
+	my ($conf)=@_;
+	
+	my $vg="";
+	my $pv="";
+	my $fh=IO::Handle->new();
+	my $sc="$conf->{path}{lvm} vgscan && $conf->{path}{lvm} vgdisplay -v";
+	open($fh, "$sc 2>&1 |") or record($conf, "Failed to call: [$sc], error: $!\n", 9);
+	while(<$fh>)
+	{
+		chomp;
+		my $line=lc($_);
+		
+		$line=~s/^\s+//;
+		$line=~s/\s{2,}/#!#/;
+		$line=~s/\s+$//;
+		next if $line !~ /#!#/;
+		$line =~ s/^- //;
+		if ($line =~ /vg name#!#(.*)/)
+		{
+			$vg=$1;
+			$pv="";
+			next;
+		}
+		if ($line =~ /pv name#!#(.*)/)
+		{
+			$pv=$1;
+			next;
+		}
+		next if not $vg;
+		next if not $line;
+		#record($conf, "line vg: [$vg] -> [$line]\n");
+		my ($var, $val)=split/#!#/, $line, 2;
+		if (not $var)
+		{
+			record($conf, "Failed to parse: [$line] for variable and value as split on '#!#'.\n", 10);
+		}
+		$val="" if not defined $val;
+		if ($pv)
+		{
+			#record($conf, "Parsing: [$vg] on: [$pv]: [$var] -> [$val]\n");
+			$conf->{lvm}{vg}{$vg}{pv}{$pv}{$var}=$val;
+		}
+		else
+		{
+			#record($conf, "Parsing: [$vg]: [$var] -> [$val]\n");
+			$conf->{lvm}{vg}{$vg}{$var}=$val;
+		}
+	}
+	$fh->close();
+	
+	return (0);
+}
+
+sub process_lvm_pv
+{
+	my ($conf)=@_;
+	
+	my $dev="";
+	my $fh=IO::Handle->new();
+	my $sc="$conf->{path}{lvm} pvscan && $conf->{path}{lvm} pvdisplay";
+	open($fh, "$sc 2>&1 |") or record($conf, "Failed to call: [$sc], error: $!\n", 11);
+	while(<$fh>)
+	{
+		chomp;
+		my $line=lc($_);
+		$line=~s/^\s+//;
+		$line=~s/\s{2,}/#!#/;
+		$line=~s/\s+$//;
+		next if $line !~ /#!#/;
+		next if $line =~ /^---/;
+		#record($conf, "lvm pvscan line: [$line]\n");
+		if ($line =~ /pv name#!#(.*)/)
+		{
+			$dev=$1;
+		}
+		next if not $dev;
+		next if not $line;
+		my ($var, $val)=split/#!#/, $line, 2;
+		if (not $var)
+		{
+			record($conf, "Failed to parse: [$line] for variable and value as split on '#!#'.\n", 12);
+		}
+		$val="" if not defined $val;
+		
+		#record($conf, "Parsing: [$dev]: [$var] -> [$val]\n");
+		$conf->{dev}{$dev}{lvm}{pv}{$var}=$val;
+	}
+	$fh->close();
+	
+	return (0);
+}
+
+sub process_blkid
+{
+	my ($conf)=@_;
+	
+	my $fh=IO::Handle->new();
+	my $sc="$conf->{path}{blkid} -c /dev/null";
+# 	record($conf, "sc: [$sc]\n");
+	open($fh, "$sc 2>&1 |") or record($conf, "Failed to call: [$sc], error: $!\n", 13);
+	while(<$fh>)
+	{
+		chomp;
+		my $line=lc($_);
+# 		record($conf, "line: [$line]\n");
+		next if $line !~ /^\//;
+		
+		my ($dev)=($line=~/^(\/.*?):/);
+		if ($line =~ /label="(.*?)"/) { $conf->{dev}{$dev}{blkid}{label} = $1; }
+		if ($line =~ /uuid="(.*?)"/)  { $conf->{dev}{$dev}{blkid}{uuid} = $1; }
+		if ($line =~ /type="(.*?)"/)  { $conf->{dev}{$dev}{blkid}{type} = $1; }
+		$conf->{dev}{$dev}{blkid}{label} = "" if not defined $conf->{dev}{$dev}{blkid}{label};
+		$conf->{dev}{$dev}{blkid}{type}  = "" if not defined $conf->{dev}{$dev}{blkid}{type};
+		$conf->{dev}{$dev}{blkid}{uuid}  = "" if not defined $conf->{dev}{$dev}{blkid}{uuid};
+		$conf->{dev}{$dev}{blkid}{uuid} =~ s/-//g;
+		my $label = $conf->{dev}{$dev}{blkid}{label};
+		my $type  = $conf->{dev}{$dev}{blkid}{type};
+		my $uuid  = $conf->{dev}{$dev}{blkid}{uuid};
+# 		record($conf, "Dev: [$dev]\n");
+# 		record($conf, "- Label: [$label], UUID: [$uuid], type: [$type]\n");
+		
+		my $fh2=IO::Handle->new();
+		my $sc2="$conf->{path}{blkid} -c /dev/null -p $dev";
+# 		record($conf, "- sc2: [$sc2]\n");
+		open($fh2, "$sc2 2>&1 |") or record($conf, "Failed to call: [$sc2], error: $!\n", 14);
+		while(<$fh2>)
+		{
+			chomp;
+			my $line=lc($_);
+# 			record($conf, "line: [$line]\n");
+			
+			if ( $line =~ /uuid="(.*?)"/)
+			{
+				$conf->{dev}{$dev}{blkid}{uuid} = $1;
+				$conf->{dev}{$dev}{blkid}{uuid} =~ s/-//g;
+			}
+			if ($line =~ /version="(.*?)"/)           { $conf->{dev}{$dev}{blkid}{version} = $1; }
+			if ($line =~ /type="(.*?)"/)              { $conf->{dev}{$dev}{blkid}{type} = $1; }
+			if ($line =~ /usage="(.*?)"/)             { $conf->{dev}{$dev}{blkid}{usage} = $1; }
+			if ($line =~ /part_entry_scheme="(.*?)"/) { $conf->{dev}{$dev}{blkid}{part_entry_scheme} = $1; }
+			if ($line =~ /part_entry_type="(.*?)"/)   { $conf->{dev}{$dev}{blkid}{part_entry_type} = $1; }
+			if ($line =~ /part_entry_number="(.*?)"/) { $conf->{dev}{$dev}{blkid}{part_entry_number} = $1; }
+			if ($line =~ /part_entry_offset="(.*?)"/) { $conf->{dev}{$dev}{blkid}{part_entry_offset} = $1; }
+			if ($line =~ /part_entry_size="(.*?)"/)   { $conf->{dev}{$dev}{blkid}{part_entry_size} = $1; }
+			if ($line =~ /part_entry_disk="(.*?)"/)   { $conf->{dev}{$dev}{blkid}{part_entry_disk} = $1; }
+			if ($line =~ /part_entry_flags="(.*?)"/)  { $conf->{dev}{$dev}{blkid}{part_entry_flags} = $1; }
+			
+			# I need a UUID for this device. If not set yet, use the UUID from
+			# here.
+			$conf->{dev}{$dev}{uuid} = $conf->{dev}{$dev}{blkid}{uuid} if not defined $conf->{dev}{$dev}{uuid};
+# 			record($conf, "- Conf UUID: [$conf->{dev}{$dev}{uuid}]\n");
+		}
+		$fh2->close();
+	}
+	$fh->close();
+	
+	return(0);
+}
+
+sub process_df
+{
+	my ($conf)=@_;
+	
+	my $block_size=0;
+	my $fh=IO::Handle->new();
+	my $sc="$conf->{path}{df} -P";
+	open($fh, "$sc 2>&1 |") or record($conf, "Failed to call: [$sc], error: $!\n", 15);
+	while(<$fh>)
+	{
+		chomp;
+		my $line=$_;
+# 		record($conf, "df line: [$line]\n");
+		if (not $block_size)
+		{
+			# Get the block size from the first line.
+			($block_size)=(split, $line)[1];
+			if ($block_size !~ /^(\d+)-/)
+			{
+				record($conf, "Failed to read block size from: [$sc]\n", 16);
+			}
+			$conf->{devices}{df_block_size}=$1;
+# 			record($conf, "block_size: [$conf->{devices}{df_block_size}]\n");
+		}
+		next if $line !~ /^\//;
+		my ($dev, $blocks, $used, $free, $percent, $mount)=(split, $line);
+		$mount="" if not defined $mount;
+# 		record($conf, "dev: [$dev], blocks: [$blocks], used: [$used], free: [$free], percent: [$percent], mount: [$mount]\n");
+		$conf->{dev}{$dev}={
+			blocks_total	=>	$blocks,
+			blocks_used	=>	$used,
+			blocks_free	=>	$free,
+			percent_free	=>	$percent,
+			mount_path	=>	$mount,
+		};
+		# Record the mount path in a searchable manner.
+		$conf->{mount}{$mount}=$dev;
+	}
+	$fh->close();
+	
+	return (0);
+}
+
+sub show_devices
+{
+	my ($conf)=@_;
+	
+# 	record($conf, "Block size: [$conf->{devices}{df_block_size} bytes] as reported by 'df'.\n");
+	foreach my $dev (sort {$a cmp $b} keys %{$conf->{dev}})
+	{
+		record($conf, "Device: [$dev]\n");
+		$conf->{dev}{$dev}{mount_path}   = "--" if not defined $conf->{dev}{$dev}{mount_path};
+		$conf->{dev}{$dev}{blkid}{label} = "--" if not $conf->{dev}{$dev}{blkid}{label};
+		record($conf, " - Label: [$conf->{dev}{$dev}{blkid}{label}]\n");
+		record($conf, " - UUID:  [$conf->{dev}{$dev}{uuid}]\n");
+		record($conf, " - Mount: [$conf->{dev}{$dev}{mount_path}]\n");
+# 		foreach my $key (sort {$a cmp $b} keys %{$conf->{dev}{$dev}})
+# 		{
+# 			next if ($key eq "blkid");
+# 			record($conf, "- Device: [$key]\t-> [$conf->{dev}{$dev}{$key}]\n");
+# 		}
+		
+# 		if (exists $conf->{dev}{$dev}{blkid})
+# 		{
+# 			foreach my $blkid_key (sort {$a cmp $b} keys %{$conf->{dev}{$dev}{blkid}})
+# 			{
+# 				record($conf, " - blkid:  [$blkid_key]\t-> [$conf->{dev}{$dev}{blkid}{$blkid_key}]\n");
+# 			}
+# 		}
+		
+# 		if (exists $conf->{dev}{$dev}{lvm})
+# 		{
+# 			foreach my $lvm_key (sort {$a cmp $b} keys %{$conf->{dev}{$dev}{lvm}{pv}})
+# 			{
+# 				record($conf, "- LVM:    [$lvm_key]\t-> [$conf->{dev}{$dev}{lvm}{pv}{$lvm_key}]\n");
+# 			}
+# 		}
+	}
+	
+	return(0);
+}
+
+sub catch_sig
+{
+	my $signame = shift;
+	
+	print "Shutting down, please wait while early termination email is sent.\n";
+	print " - Use 'kill -9 $$' to immediately terminate this program.\n";
+	my $subject .= "Premature Backup Shutdown";
+	my $body    =  "Backup stopping early on SIG${signame}.\n\n";
+	send_email($conf, $subject, $body);
+	print "Process with PID $$ Exiting on SIG${signame}.\n";
+	exit (9999);
+}

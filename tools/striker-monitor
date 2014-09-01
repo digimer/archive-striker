@@ -1,0 +1,188 @@
+#!/usr/bin/perl
+# 
+# AN!CM - Anvil! Monitor
+# 
+# This program watches the hardware and Anvil! stack for changes, sending
+# alert emails when needed.
+# 
+
+use strict;
+use warnings;
+require "./an-cm.lib";
+our $THIS_FILE = "an-cm";
+
+$SIG{INT}  = \&catch_sig;
+$SIG{TERM} = \&catch_sig;
+
+# Disable buffering
+$| = 1;
+
+my $conf = {
+	node		=>	{
+		me			=>	{
+			long_name		=>	"",
+			short_name		=>	"",
+		},
+		peer			=>	{
+			long_name		=>	"",
+			short_name		=>	"",
+		},
+	},
+	handles			=>	{
+		'log'			=>	"",
+	},
+	path			=>	{
+		cluster_conf		=>	"/etc/cluster/cluster.conf",
+		an_conf			=>	"/etc/an/an.conf",
+		'log'			=>	"/var/log/an-cm.log",
+		uname			=>	"/bin/uname",
+		clustat			=>	"/usr/sbin/clustat",
+		pgrep			=>	"/usr/bin/pgrep",
+		ifconfig		=>	"/sbin/ifconfig",
+		brctl			=>	"/usr/sbin/brctl",
+		MegaCli64		=>	"/opt/MegaRAID/MegaCli/MegaCli64",
+		hpacucli		=>	"/usr/sbin/hpacucli",
+		ipmitool		=>	"/usr/bin/ipmitool",
+		apcupsd			=>	"/sbin/apcupsd",
+		apcaccess		=>	"/sbin/apcaccess",
+		mdstat			=>	"/proc/mdstat",
+		postfix_relay_file	=>	"/etc/postfix/relay_password",
+		email_directory		=>	"/root/alerts",
+		mailx			=>	"/bin/mailx",
+		postmap			=>	"/usr/sbin/postmap",
+		postfix_main		=>	"/etc/postfix/main.cf",
+		cp			=>	"/bin/cp",
+	},
+	alerts			=>	{
+		### NOTE: All temperatures here need to be in Celcius. If the
+		###       user wants temperatures in fahrenheit, the 
+		###       temperature is adjusted just prior to display.
+		from_name		=>	"Anvil! Alerts",
+		storage			=>	{
+			delta			=>	5,	# A change of this amoint between scans will trigger an email. Factor the 'sleep_time' below.
+			upper_threshold		=>	45,	# A temperature above this will trigger an alert. Set according to the drive specs! (55c max for Seagate 15krpm)
+			power_down_threshold	=>	50,	# A temperature above this will trigger a complete shutdown of the server. Be sure to reference the OEM specs and leave enough of a buffer to give the machine time to shutdown before passing the maximum temp.
+			roc_delta		=>	10,	# RAID on Chip (RAID controller CPU) delta
+			roc_threshold		=>	95,	# ROC alert temp
+			roc_powerdown_temp	=>	100,	# ROC power down temp. # TODO: Confirm these temperatures with LSI
+		},
+		bbu			=>	{
+			delta_temp		=>	5,
+			upper_temp		=>	45,
+			powerdown_temp		=>	50,	# Max for the BBO08 is 55 *C
+			base_voltage_diff	=>	1000,	# This is how many mV below 'design_voltage' that will trigger an alert. A "charged" message will be sent when the battery reaches within 50% of this voltage.
+			base_joules_diff	=>	100,	# This is how many J below 'design_capacity' that will trigger an alert. A "charged" message will be sent when the battery reaches within 50% of this energery.
+			max_milliamperage_delta	=>	65536,	# A variation of more than this amount triggers this alert.
+		},
+		host			=>	{
+			cpu_temp_delta		=>	10,	# CPU change
+			cpu_threshold_temp	=>	65,	# CPU warning threshold
+			cpu_powerdown_temp	=>	75,	# CPU poweroff threshold
+			mb_temp_delta		=>	10,	# Mainboard change
+			mb_threshold_temp	=>	45,	# Mainboard warning threshold
+			mb_powerdown_temp	=>	55,	# Mainboard poweroff threshold
+			ram_temp_delta		=>	10,	# RAM change
+			ram_threshold_temp	=>	45,	# RAM warning threshold
+			ram_powerdown_temp	=>	55,	# RAM poweroff threshold
+			ambient_temp_delta	=>	10,	# RAM change
+			ambient_threshold_temp	=>	45,	# RAM warning threshold
+			ambient_powerdown_temp	=>	55,	# RAM poweroff threshold
+			fan_minimum_rpm		=>	500,	# If any fan drops below this threshold, it will trigger an alert. The alert will be cleared when the speed registers as douple this value.
+		},
+		ups			=>	{
+			shutdown_buffer		=>	"300",	# When the best "TIMELEFT" value is below this number of seconds, the node will gracefully power down.
+			high_line_volt_buffer	=>	"2",	# When the line voltage gets within this many volts of HITRANS an alert will be triggered.
+			low_line_volt_buffer	=>	"5",	# When the line voltage gets within this many volts of LOTRANS an alert will be triggered.
+			upper_load_threshold	=>	"90",	# This is the maximum "LOADPCT" over which an alert is triggered.
+			trim_to_debug_email	=>	"0",	# This controls whether an 'ONLINE <-> TRIM ONLINE' event triggers a normal 'alert' or 'debug_alert' email.
+		},
+	},
+	'system'		=>	{
+		sleep_time		=>	30,
+		storage_type		=>	"",
+		ipmi_available		=>	1,
+		ups_available		=>	1,		# This requires apcupsd be installed and working.
+		cluster_running		=>	1,
+		warning_event		=>	0,		# This is set true when a serious event has occured.
+		critical_event		=>	0,		# This is set true when an alert is critical.
+		emergency_shutdown	=>	0,		# This is set true when a significant fault has been detected requiring an automated shutdown of the cluster.
+		disable_emergency_shutdown	=>	1,	# The client must *physically sign* that they wish to disable automated shutdown. Enabling this option removed the ability for the node to power off to avoid physical damage. ENABLING THIS OPTION WILL VOID THE HARDWARE WARRANTY IF UPPER THRESHOLDS ARE EXCEEDED!
+		migration_target	=>	1,		# This is set true when a warning has been triggered. This prevents the other node from trying to migrate VMs to this node in case it is suffering similar environmental problems. This is cleared only when a clean scan has completed.
+		bbu_needs_attention	=>	0,		# If the battery drops low, this is set after the first alert to avoid repeated messages during charges. Once the voltage goes above minimum, this is cleared so that future events fire.
+		use_fahrenheit		=>	0,		# If set to '1', fahrenheit will be used instead of celcius.
+		check_bbu_health_after	=>	10800,		# The LSI relearn cycle flag clears before the battery charges. This is the number of seconds after the end of the cycle that we wait to check the health of the BBU. Typical recharge is a little over 2.5 hours. The default setting here is 10,800s (3h).
+		check_bbu_health	=>	0,		# This gets set to 'time + check_bbu_health_after' after a learn cycle completes. Once this unix time passes, the health of the BBU is checked and then this is 0'ed out.
+	},
+	mail_data		=>	{
+		debug_to		=>	"debug\@alteeve.ca",
+	}
+};
+
+# Should I live?
+avoid_duplicate_run($conf);
+
+# Who am I?
+get_hostname($conf);
+
+# What Anvil! am I in?
+read_conf($conf);
+if (not $conf->{this_cluster})
+{
+	# Either the config doesn't exist yet or 'this_cluster' hasn't need 
+	# defined and cluster.conf does not yet exist.
+	$conf->{mail_data}{subject} = "Anvil! Monitor Start - Unknown Anvil!";
+	$conf->{mail_data}{body}    = "
+The AN!CM monitor has started, but no Anvil! is defined in /etc/an/an.conf
+and there is no /etc/cluster/cluster.conf file to refer to. Entering loop
+and will wait for one of these to appear.
+
+No action is required. The monitor will begin once this Anvil! is defined or
+detected.
+";
+	send_email($conf);
+	while (not $conf->{this_cluster})
+	{
+		sleep 30;
+		read_conf($conf);
+	}
+}
+
+# Read in cluster.conf.
+read_cluster_conf($conf);
+
+# How am I?
+read_states($conf);
+
+# Tell the user.
+initial_report($conf);
+
+# Infinite loop time
+while (1)
+{
+	#record($conf, "$THIS_FILE ".__LINE__."; Checking for changes.\n");
+	check_for_changes($conf);
+	sleep $conf->{'system'}{sleep_time};
+	
+	# Re-read the config files if they exist. 
+	### NOTE: Existance check avoids closing the program if the configs get
+	###       moved temporarily.
+	read_cluster_conf($conf) if -e $conf->{path}{cluster_conf};
+	read_conf($conf)         if -e $conf->{path}{an_conf};
+}
+
+exit(0);
+
+# This catches SIGINT and SIGTERM and fires out an email before shutting down.
+sub catch_sig
+{
+	my $signame = shift;
+	
+	$conf->{mail_data}{subject} = "Anvil! Monitor Shutdown";
+	$conf->{mail_data}{body}    = "
+The $conf->{node}{me}{short_name} Anvil! node's monitor program has stopped.
+It received a SIG${signame} signal and shut down.
+";
+	send_email($conf);
+	
+	die "Process with PID $$ Exiting on SIG${signame}.\n";
+}

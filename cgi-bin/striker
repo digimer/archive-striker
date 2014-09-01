@@ -1,0 +1,263 @@
+#!/usr/bin/perl
+#
+# AN!CDB - Alteeve's Niche! Cluster Dashboard
+# 
+# This software is released under the GNU GPL v2+ license.
+# 
+# No warranty is provided. Do not use this software unless you are willing and
+# able to take full liability for it's use. The authors take care to prevent
+# unexpected side effects when using this program. However, no software is
+# perfect and bugs may exist which could lead to hangs or crashes in the
+# program, in your cluster and possibly even data loss.
+# 
+# If you are concerned about these risks, please stick to command line tools.
+# 
+# This program is designed to extend clusters built according to this tutorial:
+# - https://alteeve.com/w/2-Node_Red_Hat_KVM_Cluster_Tutorial
+#
+# This program's source code and updates are available on Github:
+# - https://github.com/digimer/an-cdb
+#
+# Author;
+# Alteeve's Niche!  -  https://alteeve.ca
+# Madison Kelly     -  mkelly@alteeve.ca
+# 
+# TODO:
+# - Adding a VM that is running on the "wrong" node gets it added to the wrong
+#   failover domain.
+# - Check to see if a VM is running outside of clustat and, if so, auto-enable
+#   it on the appropriate node.
+# - Add a "Cancel" button to each "Confirm" box.
+# - Add an ability to trigger a status email. SIGUSR1 via script -> email
+# - Allow users to rename VMs.
+# - Add 'virsh undefine' when deleting VMs if 'virsh list --all' shows it still
+#   defined on one of the VMs.
+# - Build a VM outside of the cluster and sort out a way to have the dashboard
+#   insert it into the cluster.
+# - Make "Node -> Offline" be a "Warning!"
+# - Make "Bond -> Down" be a warning
+# - Enable an administrative LOCK OUT switch to prevent reboots during things
+#   like firmware updates.
+#   
+# - Pass a timestamp with all CGI commands for five minutes in the future and
+#   abort any actions that are older than that.
+# - Pass $THIS_FILE and __LINE__ on all 'error()' calls.
+# 
+# Bugs:
+# - Media Library isn't skinable/translatable yet.
+
+use strict;
+use warnings;
+
+my $THIS_FILE = "an-cdb";
+require "./common.lib";
+require "./an-cluster.lib";
+require "./an-cdb.lib";
+
+# Turn off buffering so that the pinwheel will display while waiting
+# for the SSH call(s) to complete.
+$| = 1;
+
+my ($conf) = initialize($THIS_FILE);
+
+find_executables($conf);
+read_hosts($conf);
+read_ssh_config($conf);
+read_conf($conf);
+
+# I need to convert the global configuration of the clusters to the format I use here.
+convert_cluster_config($conf);
+
+# If there is only one cluster defined, use it. Note that I need a special
+# exception in get_cgi_vars() for this to work properly.
+if ((not $conf->{cgi}{cluster}) && (not $conf->{cgi}{config}))
+{
+	my @cluster_name;
+	foreach my $cluster (keys %{$conf->{clusters}})
+	{
+		push @cluster_name, $cluster;
+	}
+	if (@cluster_name == 1)
+	{
+		$conf->{cgi}{cluster} = $cluster_name[0];
+	}
+}
+
+# Get the CGI variables I might be passed.
+get_cgi_vars($conf, [
+	"adapter",
+	"anvil",
+	"boot_device",
+	"change",
+	"cluster",
+	"config",
+	"confirm",
+	"cpu_cores",
+	"device",
+	"device_keys",
+	"disk_address",
+	"do",
+	"driver_iso",
+	"file",
+	"host",
+	"anvil_id",
+	"insert",
+	"install_iso",
+	"logical_disk",
+	"logo",
+	"mail_data__to",
+	"mail_data__sending_domain",
+	"make_disk_good",
+	"max_cores",
+	"max_ram",
+	"max_storage",
+	"name",
+	"node",
+	"node_cluster_name",
+	"os_variant",
+	"ram",
+	"ram_suffix",
+	"row",
+	"save",
+	"section",
+	"smtp__server",
+	"smtp__port",
+	"smtp__username",
+	"smtp__password",
+	"smtp__helo_domain",
+	"smtp__encrypt_pass",
+	"smtp__security",
+	"save",
+	"storage",
+	"system",
+	"target",
+	"task",
+	"vg_list",
+	"vm",
+	"vm_ram",
+]);
+
+# If 'anvil' was passed, get it's ID and then check for CGI variables.
+if (($conf->{cgi}{save}) && ($conf->{cgi}{anvil_id}))
+{
+	my $this_id = $conf->{cgi}{anvil_id};
+	record($conf, "$THIS_FILE ".__LINE__."; this_id: [$this_id]\n");
+	get_cgi_vars($conf, [
+		"cluster__${this_id}__name",
+		"cluster__${this_id}__description",
+		"cluster__${this_id}__url",
+		"cluster__${this_id}__company",
+		"cluster__${this_id}__ricci_pw",
+		"cluster__${this_id}__root_pw",
+		"cluster__${this_id}__nodes_1_name",
+		"cluster__${this_id}__nodes_1_ip",
+		"cluster__${this_id}__nodes_1_port",
+		"cluster__${this_id}__nodes_2_name",
+		"cluster__${this_id}__nodes_2_ip",
+		"cluster__${this_id}__nodes_2_port",
+		"cluster__${this_id}__smtp__server",
+		"cluster__${this_id}__smtp__port",
+		"cluster__${this_id}__smtp__username",
+		"cluster__${this_id}__smtp__password",
+		"cluster__${this_id}__smtp__security",
+		"cluster__${this_id}__smtp__encrypt_pass",
+		"cluster__${this_id}__smtp__helo_domain",
+		"cluster__${this_id}__mail_data__to",
+		"cluster__${this_id}__mail_data__sending_domain",
+	]);
+}
+
+# Pick up the list of volume groups.
+if ($conf->{cgi}{vg_list})
+{
+	my @more_vars;
+	foreach my $vg (split/,/, $conf->{cgi}{vg_list})
+	{
+		next if not $vg;
+		push @more_vars, "vg_$vg";
+		push @more_vars, "vg_suffix_$vg";
+	}
+	get_cgi_vars($conf, \@more_vars);
+}
+# Pick up the list of optical devices.
+if ($conf->{cgi}{device_keys})
+{
+	my @more_vars;
+	foreach my $device (split/,/, $conf->{cgi}{device_keys})
+	{
+		next if not $device;
+		push @more_vars, "$device";
+		my $drive = ($device =~ /media_(.*)/)[0];
+		push @more_vars, "insert_$drive";
+	}
+	get_cgi_vars($conf, \@more_vars);
+}
+
+# Print the header.
+header($conf);
+
+# Do I have a cluster name?
+if ($conf->{cgi}{logo})
+{
+	if ($conf->{cgi}{config})
+	{
+		configure_dashboard($conf);
+	}
+	else
+	{
+		ask_which_cluster($conf);
+	}
+}
+elsif ($conf->{cgi}{config})
+{
+	configure_dashboard($conf);
+}
+elsif ($conf->{cgi}{'system'})
+{
+	configure_local_system($conf);
+}
+elsif ($conf->{cgi}{cluster})
+{
+	my $cluster = $conf->{cgi}{cluster};
+	$conf->{'system'}{root_password} = $conf->{clusters}{$cluster}{root_pw};
+	record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster], clusters::${cluster}::root_pw: [$conf->{clusters}{$cluster}{root_pw}], system::root_password: [$conf->{'system'}{root_password}]\n");
+	
+	# If the requested cluster isn't found in the config file, error out.
+	if (not $conf->{clusters}{$cluster}{nodes})
+	{
+		# You can pass in 'anvil => $cluster' as the first hash
+		# reference in the 'template' call and then use the string
+		# directly in the template, but I think that's too indirect
+		# for future devs to follow initially.
+		my $say_message = get_string($conf, {key => "message_0003", variables => {
+			anvil	=>	$cluster,
+		}});
+		print template($conf, "main-page.html", "no-anvil-found", {
+			message	=>	$say_message,
+		}); 
+	}
+	else
+	{
+		if ($conf->{cgi}{task})
+		{
+			$conf->{'system'}{show_refresh} = 0;
+			process_task($conf);
+		}
+		else
+		{
+			# Set the node list.
+			#record($conf, "cluster: [$cluster], ricci_pw: [$conf->{clusters}{$cluster}{ricci_pw}]\n");
+			$conf->{nodes} = $conf->{clusters}{$cluster}{nodes};
+			scan_cluster($conf);
+			display_details($conf);
+		}
+	}
+}
+else
+{
+	# Ask the user which cluster they want to look at.
+	ask_which_cluster($conf);
+}
+footer($conf);
+
+exit (0);
