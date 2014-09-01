@@ -157,7 +157,7 @@ my $conf = {
 		selinux_config		=>	"/etc/selinux/config",
 		sshd_config		=>	"/etc/ssh/sshd_config",
 		striker_config		=>	"/etc/an/an.conf",
-		striker_log		=>	"/var/log/an-cdb.log",
+		striker_log		=>	"/var/log/striker.log",
 		tomcat_server		=>	"/etc/tomcat6/server.xml",
 	},
 	permissions	=>	{
@@ -169,7 +169,7 @@ my $conf = {
 			recursive		=>	1,
 		},
 		striker_log		=>	{
-			path			=>	"/var/log/an-cdb.log",
+			path			=>	"/var/log/striker.log",
 			owner			=>	"apache",
 			group			=>	"apache",
 			mode			=>	"g+w",
@@ -270,11 +270,11 @@ my $conf = {
 		striker_user		=>	"admin",
 		striker_pass		=>	"",		# no default password, evar!
 		switch_count		=>	0,
-		tarball_dir		=>	"an-cdb-#!striker_version!#",
+		tarball_dir		=>	"striker-#!striker_version!#",
 	},
 	url		=>	{
-		git_master	=>	"https://github.com/digimer/an-cdb/archive/master.tar.gz",
-		striker		=>	"https://github.com/digimer/an-cdb/archive/v#!striker_version!#.tar.gz",
+		git_master	=>	"https://github.com/digimer/striker/archive/master.tar.gz",
+		striker		=>	"https://github.com/digimer/striker/archive/v#!striker_version!#.tar.gz",
 	},
 	nics		=>	["bcn-link1", "ifn-link1"],
 	network		=>	{
@@ -509,8 +509,8 @@ sub set_file_ownership_and_modes
 		#if ($selinux)
 		if (0)
 		{
-			#[root@striker ~]# semanage fcontext -a -t httpd_sys_content_t /var/log/an-cdb.log 
-			#[root@striker ~]# restorecon /var/log/an-cdb.log 
+			#[root@striker ~]# semanage fcontext -a -t httpd_sys_content_t /var/log/striker.log 
+			#[root@striker ~]# restorecon /var/log/striker.log 
 			print "  Setting selinux context to: [$selinux].\n";
 			my $shell_call = "$conf->{executable}{semanage} fcontext -a -t $selinux $path && $conf->{executable}{restorecon} $path";
 			#print "[ Debug ] - shell_call: [$shell_call]\n";
@@ -910,7 +910,7 @@ sub download_striker
 		print "- Downloading the developer version from github.\n";
 		$download                  = $conf->{url}{git_master};
 		$extract                   = ($conf->{url}{git_master} =~ /^.*\/(.*)$/)[0];
-		$conf->{directory}{source} = "./an-cdb-master";
+		$conf->{directory}{source} = "./striker-master";
 	}
 	else
 	{
@@ -937,7 +937,7 @@ sub download_striker
 				print "- Downloading requested version from: [$conf->{url}{striker}]\n";
 				$download                  = $conf->{url}{striker};
 				$extract                   = ($conf->{url}{striker} =~ /^.*\/(.*)$/)[0];
-				$conf->{directory}{source} = "./an-cdb-".$conf->{sys}{install_version};
+				$conf->{directory}{source} = "./striker-".$conf->{sys}{install_version};
 			}
 		}
 		else
@@ -946,7 +946,7 @@ sub download_striker
 			print "- Downloading version: [$conf->{sys}{install_version}] from: [$conf->{url}{striker}]\n";
 			$download                  = $conf->{url}{striker};
 			$extract                   = ($conf->{url}{striker} =~ /^.*\/(.*)$/)[0];
-			$conf->{directory}{source} = "./an-cdb-".$conf->{sys}{install_version};
+			$conf->{directory}{source} = "./striker-".$conf->{sys}{install_version};
 		}
 	}
 	

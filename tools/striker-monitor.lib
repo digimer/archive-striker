@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-# AN!CDB - Alteeve's Niche! Anvil! Dashboard
+# Striker - Alteeve's Niche! Anvil! Dashboard
 # 
 # This software is released under the GNU GPL v2+ license.
 # 
@@ -16,7 +16,7 @@
 # - https://alteeve.ca/w/AN!Cluster_Tutorial_2
 #
 # This program's source code and updates are available on Github:
-# - https://github.com/digimer/an-cdb
+# - https://github.com/digimer/striker
 #
 # Author;
 # Alteeve's Niche!  -  https://alteeve.ca
@@ -30,7 +30,7 @@ use IO::Handle;
 # Setup for UTF-8 mode.
 binmode STDOUT, ":utf8:";
 $ENV{'PERL_UNICODE'}=1;
-our $THIS_FILE = "an-cm.lib";
+our $THIS_FILE = "striker-monitor.lib";
 
 # This sends an email to the distrobution list with the current state of the
 # node and the Anvil!.

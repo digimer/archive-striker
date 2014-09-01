@@ -9,10 +9,10 @@ mkdir -p /root/base/etc/init.d
 mkdir -p /root/base/var/spool/cron
  
 # Root user
-rsync -av /root/.bashrc   /root/base/root/
-rsync -av /root/.ssh      /root/base/root/
-rsync -av /root/an-cm*    /root/base/root/
-rsync -av /root/archive_* /root/base/root/
+rsync -av /root/.bashrc          /root/base/root/
+rsync -av /root/.ssh             /root/base/root/
+rsync -av /root/striker-monitor* /root/base/root/
+rsync -av /root/archive_*        /root/base/root/
  
 # Directories
 rsync -av /etc/ssh     /root/base/etc/

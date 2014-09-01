@@ -16,7 +16,7 @@
 # - https://alteeve.com/w/2-Node_Red_Hat_KVM_Cluster_Tutorial
 #
 # This program's source code and updates are available on Github:
-# - https://github.com/digimer/an-cdb
+# - https://github.com/digimer/striker
 #
 # Author;
 # Alteeve's Niche!  -  https://alteeve.com
@@ -33,7 +33,7 @@ use CGI::Carp "fatalsToBrowser";
 # Setup for UTF-8 mode.
 binmode STDOUT, ":utf8:";
 $ENV{'PERL_UNICODE'} = 1;
-my $THIS_FILE = "an-cdb.lib";
+my $THIS_FILE = "striker.lib";
 
 # This takes a node name and returns the peer node.
 sub get_peer_node
@@ -5110,7 +5110,7 @@ sub confirm_provision_vm
 		title			=>	$say_title,
 		name			=>	$conf->{cgi}{name},
 		select_os_variant	=>	$select_os_variant,
-		media_library_url	=>	"an-mc?cluster=$conf->{cgi}{cluster}",
+		media_library_url	=>	"media-library?cluster=$conf->{cgi}{cluster}",
 		select_install_iso	=>	$select_install_iso,
 		select_driver_iso	=>	$select_driver_iso,
 		say_max_ram		=>	$say_max_ram,
@@ -7814,7 +7814,7 @@ sub display_free_resources
 	{
 		# The cluster is running, so enable the media library link.
 		$say_mc = template($conf, "common.html", "enabled-button-no-class", {
-			button_link	=>	"/cgi-bin/an-mc?cluster=$conf->{cgi}{cluster}",
+			button_link	=>	"/cgi-bin/media-library?cluster=$conf->{cgi}{cluster}",
 			button_text	=>	"#!string!button_0023!#",
 			id		=>	"media_library_$conf->{cgi}{cluster}",
 		}, "", 1);

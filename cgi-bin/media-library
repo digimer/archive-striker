@@ -12,10 +12,9 @@
 use strict;
 use warnings;
 
-my $THIS_FILE = "an-mc";
+my $THIS_FILE = "media-library";
 require "./common.lib";
-require "./an-cluster.lib";
-require "./an-mc.lib";
+require "./media-library.lib";
 
 # Turn off buffering so that the pinwheel will display while waiting
 # for the SSH call(s) to complete.
@@ -57,7 +56,7 @@ get_cgi_vars($conf, [
 ]);
 
 # Print the header.
-header($conf, "an-mc");
+header($conf, "media-library");
 
 # Do I have a cluster name?
 #record($conf, "$THIS_FILE ".__LINE__."; cgi::cluster: [$conf->{cgi}{cluster}]\n");

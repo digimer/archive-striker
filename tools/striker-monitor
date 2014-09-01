@@ -8,8 +8,8 @@
 
 use strict;
 use warnings;
-require "./an-cm.lib";
-our $THIS_FILE = "an-cm";
+require "./striker-monitor.lib";
+our $THIS_FILE = "striker-monitor";
 
 $SIG{INT}  = \&catch_sig;
 $SIG{TERM} = \&catch_sig;
@@ -34,7 +34,7 @@ my $conf = {
 	path			=>	{
 		cluster_conf		=>	"/etc/cluster/cluster.conf",
 		an_conf			=>	"/etc/an/an.conf",
-		'log'			=>	"/var/log/an-cm.log",
+		'log'			=>	"/var/log/striker-monitor.log",
 		uname			=>	"/bin/uname",
 		clustat			=>	"/usr/sbin/clustat",
 		pgrep			=>	"/usr/bin/pgrep",

@@ -152,7 +152,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 # root_pw:     This password is used by the dashboard to log into this #!string!brand_0004!#'s
 #              nodes.
 		</key>
- 		<!-- TODO: text_0003 with '[#!variable!date!#' breaks an-cluster.lib... Fix it. -->
+ 		<!-- TODO: text_0003 with '[#!variable!date!#' breaks common.lib... Fix it. -->
 		<key name="text_0003">### Last updated: #!variable!date!#</key> <!-- This string is used in a regex. Please leave the variable in square-brackets. -->
 		<key name="text_0004">
 ##############################################################################
